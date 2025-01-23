@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import pickle
 from PIL import Image
+import folium
+from folium.plugins import MarkerCluster
 
 us_states = {'AK': 'Alaska',
  'AL': 'Alabama',
@@ -63,7 +65,7 @@ us_states = {'AK': 'Alaska',
 def state_code(state_code): return us_states[state_code]
 
 st.write("""
-         # US Traffic Accidents Data | 2017 - 2023
+         # US Traffic Accidents Data | 2016 - 2023
          The primary objectives of this analysis are to:
             - **Visualize Geographic Data**: Leverage geospatial data to create intuitive and informative visualizations.
             - **Identify Accident Hotspots**: Locate and analyze regions with high frequencies of traffic accidents.
@@ -120,6 +122,28 @@ else:
     filtered_data = data[data['Start_Time'].dt.year.isin(selected_years)]
 
 
+month_order = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+month = month_order.copy()
+month.insert(0, 'All Months')
+selected_month = st.sidebar.multiselect(
+    "Select Month", month, default=month[0]  # Default to all months
+)
+if 'All Months' in selected_month:
+    filtered_data = filtered_data  # Include all data if 'All Months' is selected
+else:
+    filtered_data = filtered_data[filtered_data['Start_Time'].dt.month_name().isin(selected_month)]
+
+time_of_day = st.sidebar.radio("Select Time of Day", ['Day', 'Night'])
+
+if time_of_day == 'Day':
+    filtered_data = filtered_data[filtered_data['Sunrise_Sunset'] == 'Day']
+else:
+    filtered_data = filtered_data[filtered_data['Sunrise_Sunset'] == 'Night']
+
+# Display filtered data
+st.write(f"Showing accidents for {', '.join([str(year) for year in selected_years])} {month} during {time_of_day} time.")
+st.write(filtered_data.head())
 
 
 
@@ -129,4 +153,3 @@ else:
 
 
 
-st.write(data.head())
