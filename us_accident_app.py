@@ -63,7 +63,7 @@ us_states = {'AK': 'Alaska',
 def state_code(state_code): return us_states[state_code]
 
 st.write("""
-         # US Car Accidents App
+         # US Traffic Accidents Data | 2017 - 2023
          The primary objectives of this analysis are to:
             - **Visualize Geographic Data**: Leverage geospatial data to create intuitive and informative visualizations.
             - **Identify Accident Hotspots**: Locate and analyze regions with high frequencies of traffic accidents.
@@ -85,6 +85,7 @@ def load_data():
     all_columns = basic_columns + geo_columns + road_conditions + weather_columns + description_columns
     data = data[all_columns]
 
+    # Preprocess data
     # Intergrate datetime columns
     data['Start_Time'] = pd.to_datetime(data['Start_Time'].str.replace(r'\.\d+$', '', regex=True))
     data['End_Time'] = pd.to_datetime(data['End_Time'].str.replace(r'\.\d+$', '', regex=True))
@@ -99,10 +100,24 @@ def load_data():
 
     return data
 
-# Preprocess data
-
 data = load_data()
 
+
+# Sidebar for user input controls
+
+st.sidebar.title("Select Filters")
+years = data['Start_Time'].dt.year.unique().tolist()
+years.sort()
+years.insert(0, 'All Years')
+selected_years = st.sidebar.multiselect(
+    "Select Year", years, default=years[0]  # Default to all years
+)
+
+# Filter data based on selected years
+if 'All Years' in selected_years:
+    filtered_data = data  # Include all data if 'All Years' is selected
+else:
+    filtered_data = data[data['Start_Time'].dt.year.isin(selected_years)]
 
 
 
