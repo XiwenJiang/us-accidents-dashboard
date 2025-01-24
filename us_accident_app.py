@@ -5,6 +5,8 @@ import pickle
 from PIL import Image
 import folium
 from folium.plugins import MarkerCluster
+import geopandas as gpd
+from streamlit_folium import st_folium 
 
 us_states = {'AK': 'Alaska',
  'AL': 'Alabama',
@@ -149,6 +151,83 @@ st.write(filtered_data.head())
 
 
 
+
+# Initialize the map
+
+def create_map(df_loc, latitude, longitude, zoom, tiles='OpenStreetMap'):
+    """
+    Generate a Folium Map with clustered markers of accident locations.
+    """
+    world_map = folium.Map(location=[latitude, longitude], zoom_start=zoom, tiles=tiles)
+    marker_cluster = MarkerCluster().add_to(world_map)
+
+    # Iterate over the DataFrame rows and add each marker to the cluster
+    for idx, row in df_loc.iterrows():
+        folium.Marker(
+            location=[row['Start_Lat'], row['Start_Lng']],
+            # You can add more attributes to your marker here, such as a popup
+            popup=f"Lat, Lng: {row['Start_Lat']}, {row['Start_Lng']}"
+        ).add_to(marker_cluster)
+
+    return world_map
+
+map_us = create_map(filtered_data, 39.50, -98.35, 4)
+
+# Display the map in Streamlit using st_folium
+st.write("### Accident Locations on the Map")
+st_folium(map_us, width=725, height=500)  # Display the map with specific width and height
+
+
+
+
+# Fix SettingWithCopyWarning
+filtered_data.loc[:, 'Start_Time'] = filtered_data['Start_Time'].astype(str)
+filtered_data.loc[:, 'End_Time'] = filtered_data['End_Time'].astype(str)
+
+# # Function to create a Folium map with clustered markers
+# def create_map(df_loc, latitude, longitude, zoom, tiles='OpenStreetMap'):
+#     """
+#     Generate a Folium Map with clustered markers of accident locations.
+#     """
+#     world_map = folium.Map(location=[latitude, longitude], zoom_start=zoom, tiles=tiles)
+#     marker_cluster = MarkerCluster().add_to(world_map)
+
+#     # Iterate over the DataFrame rows and add each marker to the cluster
+#     for idx, row in df_loc.iterrows():
+#         folium.Marker(
+#             location=[row['Start_Lat'], row['Start_Lng']],
+#             # Popup with accident details (customize as needed)
+#             popup=f"Lat, Lng: {row['Start_Lat']}, {row['Start_Lng']}<br>Severity: {row['Severity']}<br>City: {row['City']}"
+#         ).add_to(marker_cluster)
+
+#     return world_map
+
+# # Create the map centered on the US
+# map_us = create_map(filtered_data, 39.50, -98.35, 4)
+
+# # Display the map in Streamlit using st_folium
+# st.write("### Accident Locations on the Map")
+# st_folium(map_us, width=725, height=500)  # Display the map with specific width and height
+
+# Convert DataFrame to GeoDataFrame for efficient handling of geospatial data
+gdf = gpd.GeoDataFrame(filtered_data, geometry=gpd.points_from_xy(filtered_data['Start_Lng'], filtered_data['Start_Lat']))
+
+# Convert GeoDataFrame to GeoJSON format
+geojson_data = gdf.to_json()
+
+# Initialize the Folium map centered around the US
+m = folium.Map(location=[39.50, -98.35], zoom_start=4)
+
+# Add the GeoJSON data to the map as a single object
+folium.GeoJson(
+    geojson_data, 
+    popup=folium.GeoJsonPopup(fields=["Severity", "City", "State", "Start_Time", "Distance(mi)"], 
+                              labels=True, localize=True)
+).add_to(m)
+
+# Display the map in Streamlit using st_folium
+st.write("### Accident Locations on the Map")
+st_folium(m, width=725, height=500)  # Display the map with specific width and height
 
 
 
