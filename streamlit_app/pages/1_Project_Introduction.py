@@ -1,8 +1,6 @@
 import streamlit as st
 
-st.title("Introduction")
-st.write("This is the introduction page of the US Accidents Dashboard.")
-st.write("""
-    Explore detailed insights into US accidents, including time-based trends and state-specific analyses.
-    Use the navigation sidebar to access other pages.
-""")
+st.title("Welcome to the US Accidents Dashboard!")
+st.write("Navigate through the pages to explore different analyses.")
+
+st.image("your_intro_image.jpg", caption="A brief introduction to your dashboard.")  # Optional
