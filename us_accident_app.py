@@ -8,6 +8,7 @@ from folium.plugins import MarkerCluster
 import geopandas as gpd
 from streamlit_folium import st_folium 
 import plotly.express as px
+import plotly.graph_objects as go
 
 us_states = {'AK': 'Alaska',
  'AL': 'Alabama',
@@ -92,8 +93,12 @@ def load_data():
 
     # Preprocess data
     # Intergrate datetime columns
-    data['Start_Time'] = pd.to_datetime(data['Start_Time'].str.replace(r'\.\d+$', '', regex=True))
-    data['End_Time'] = pd.to_datetime(data['End_Time'].str.replace(r'\.\d+$', '', regex=True))
+    data['Start_Time'] = pd.to_datetime(data['Start_Time'].str.replace(r'\.\d+$', '', regex=True), errors='coerce')
+    data['End_Time'] = pd.to_datetime(data['End_Time'].str.replace(r'\.\d+$', '', regex=True), errors='coerce')
+    data['Year'] = data['Start_Time'].dt.year
+    data['Month'] = data['Start_Time'].dt.month
+    data['Day of Week'] = data['Start_Time'].dt.dayofweek
+    data['Hour'] = data['Start_Time'].dt.hour
 
     # Severity Levels
     severity_level = {1: 'Low', 2: 'Medium', 3: 'High', 4: 'Critical'}
@@ -107,98 +112,147 @@ def load_data():
 
 data = load_data()
 
-
-# Sidebar for user input controls
-
-st.sidebar.title("Select Filters")
-years = data['Start_Time'].dt.year.unique().tolist()
-years.sort()
-years.insert(0, 'All Years')
-selected_years = st.sidebar.multiselect(
-    "Select Year", years, default=years[0]  # Default to all years
-)
-
-# Filter data based on selected years
-if 'All Years' in selected_years:
-    filtered_data = data  # Include all data if 'All Years' is selected
-else:
-    filtered_data = data[data['Start_Time'].dt.year.isin(selected_years)]
-
-
-month_order = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-
-month = month_order.copy()
-month.insert(0, 'All Months')
-selected_month = st.sidebar.multiselect(
-    "Select Month", month, default=month[0]  # Default to all months
-)
-if 'All Months' in selected_month:
-    filtered_data = filtered_data  # Include all data if 'All Months' is selected
-else:
-    filtered_data = filtered_data[filtered_data['Start_Time'].dt.month_name().isin(selected_month)]
-
-time_of_day = st.sidebar.radio("Select Time of Day", ['Day', 'Night'])
-
-if time_of_day == 'Day':
-    filtered_data = filtered_data[filtered_data['Sunrise_Sunset'] == 'Day']
-else:
-    filtered_data = filtered_data[filtered_data['Sunrise_Sunset'] == 'Night']
-
-# Display filtered data
-st.write(f"Showing accidents for {', '.join([str(year) for year in selected_years])} {month} during {time_of_day} time.")
-st.write(filtered_data.head())
-
-
-
-
-
-
-# # Initialize the map
-
-# def create_map(df_loc, latitude, longitude, zoom, tiles='OpenStreetMap'):
-#     """
-#     Generate a Folium Map with clustered markers of accident locations.
-#     """
-#     world_map = folium.Map(location=[latitude, longitude], zoom_start=zoom, tiles=tiles)
-#     marker_cluster = MarkerCluster().add_to(world_map)
-
-#     # Iterate over the DataFrame rows and add each marker to the cluster
-#     for idx, row in df_loc.iterrows():
-#         folium.Marker(
-#             location=[row['Start_Lat'], row['Start_Lng']],
-#             # You can add more attributes to your marker here, such as a popup
-#             popup=f"Lat, Lng: {row['Start_Lat']}, {row['Start_Lng']}"
-#         ).add_to(marker_cluster)
-
-#     return world_map
-
-# map_us = create_map(filtered_data, 39.50, -98.35, 4)
+st.write(data.head())
 
 # Display the map in Streamlit using st_folium
 st.write("### Accident Locations on the Map")
+state_yearly_accidents = data.groupby(['State_Code', 'Year']).agg({'ID': 'count'}).reset_index()
+state_yearly_accidents.columns = ['State_Code', 'Year', 'Accident_Count']
+
+# Step 4: Aggregate accident counts by severity for each state and year
+state_yearly_severity_counts = data.groupby(['State_Code', 'Year', 'Severity']).agg({'ID': 'count'}).reset_index()
+state_yearly_severity_counts.columns = ['State_Code', 'Year', 'Severity', 'Severity_Count']
+
+# Step 5: Merge the total accident counts and severity counts into one DataFrame
+state_yearly_data = pd.merge(state_yearly_accidents, state_yearly_severity_counts, on=['State_Code', 'Year'], how='left')
+
+# Step 6: Create the tooltip column with all severity counts
+def get_severity_count(state_code, severity):
+    # Filter the data for the state and severity
+    severity_count = state_yearly_data[(state_yearly_data['State_Code'] == state_code) & 
+                                       (state_yearly_data['Severity'] == severity)]
+    
+    # If the severity count exists, return it; otherwise, return 0
+    if not severity_count.empty:
+        return severity_count['Severity_Count'].values[0]
+    else:
+        return 0  # If no data, return 0
+
+# Generate the tooltip for each row
+state_yearly_data['tooltip'] = state_yearly_data.apply(
+    lambda row: f"State: {row['State_Code']}<br>Total Accidents: {row['Accident_Count']}<br>"
+                f"Low: {get_severity_count(row['State_Code'], 'Low')}<br>"
+                f"Medium: {get_severity_count(row['State_Code'], 'Medium')}<br>"
+                f"High: {get_severity_count(row['State_Code'], 'High')}<br>"
+                f"Critical: {get_severity_count(row['State_Code'], 'Critical')}",
+    axis=1)
+
+fig = px.scatter_geo(state_yearly_data,
+                    locations='State_Code',
+                    locationmode='USA-states',
+                    color='Accident_Count',
+                    hover_name='State_Code',
+                    color_continuous_scale='Plasma',
+                    size = 'Accident_Count',
+                    animation_frame="Year",
+                    labels={'Accident_Count': 'Number of Accidents'},
+                    title='Accident Locations by State on the Map',
+                    hover_data={'tooltip': True},
+                    template="plotly",
+                    size_max=60)
 
 
-state_accidents = filtered_data.groupby('State_Code').agg({'ID': 'count'}).reset_index()
-state_accidents.columns = ['State_Code', 'Accident_Count']
-filtered_data = filtered_data.merge(state_accidents, on='State_Code', how='left')
-
-fig = px.scatter_geo(filtered_data,
-                     locations = 'State_Code',
-                     locationmode='USA-states',
-                     size='Accident_Count',
-                     color='Accident_Count',
-                     hover_name='State',
-                     title='Top 10 States with Most Accidents')
-
+# Step 8: Update the map style and settings
 fig.update_geos(scope='usa',
-                projection_type='albers usa',
-                showcoastlines=True,
-                visible=True,
-                coastlinecolor='Black',
-                showsubunits=True)
+            projection_type='albers usa',
 
+            showcoastlines=True,
+            coastlinecolor='Gray',
+            lataxis_showgrid=True, lonaxis_showgrid=True,
+            showsubunits=True,
+            showlakes = True)
+
+st.plotly_chart(fig)
+
+
+
+
+# Step 5: Generate animation frames for each year
+frames = [
+    go.Frame(
+        data=[go.Scattergeo(
+            locationmode='USA-states',
+            locations=state_yearly_data[state_yearly_data['Year'] == year]['State_Code'],
+            text=state_yearly_data[state_yearly_data['Year'] == year]['tooltip'],
+            hoverinfo='text',
+            marker=dict(
+                size=state_yearly_data[state_yearly_data['Year'] == year]['Accident_Count'] / 100,  # Scaling for visibility
+                color=state_yearly_data[state_yearly_data['Year'] == year]['Accident_Count'],
+                colorscale='Plasma',
+                colorbar_title='Accident Count',
+                line=dict(width=0)
+            )
+        )],
+        name=str(year)  # The frame name is the year
+    )
+    for year in state_yearly_data['Year'].unique()
+]
+
+# Step 6: Create the Scattergeo plot with animation
+fig = go.Figure(
+    data=[go.Scattergeo(
+        locationmode='USA-states',
+        locations=state_yearly_data[state_yearly_data['Year'] == state_yearly_data['Year'].min()]['State_Code'],
+        text=state_yearly_data[state_yearly_data['Year'] == state_yearly_data['Year'].min()]['tooltip'],
+        hoverinfo='text',
+        marker=dict(
+            size=state_yearly_data[state_yearly_data['Year'] == state_yearly_data['Year'].min()]['Accident_Count'] / 100,
+            color=state_yearly_data[state_yearly_data['Year'] == state_yearly_data['Year'].min()]['Accident_Count'],
+            colorscale='Plasma',
+            colorbar_title='Accident Count',
+            line=dict(width=0)
+        )
+    )],
+    frames=frames  # Add the frames to the figure
+)
+
+# Step 7: Add animation control buttons
+fig.update_layout(
+    updatemenus=[
+        dict(
+            type='buttons',
+            showactive=True,
+            buttons=[
+                dict(
+                    label='Play',
+                    method='animate',
+                    args=[None, dict(frame=dict(duration=500, redraw=True), fromcurrent=True)]  # Play the animation
+                ),
+                dict(
+                    label='Pause',
+                    method='animate',
+                    args=[None, dict(frame=dict(duration=0, redraw=False), mode='immediate')]  # Pause the animation
+                )
+            ],
+            direction='left',
+            pad={'r': 10, 't': 87},
+
+            x=0.1,
+            xanchor='right',
+            y=0,
+            yanchor='top'
+        )
+    ],
+    geo=dict(
+        scope='usa',
+        projection_type='albers usa',
+        showcoastlines=True,
+        coastlinecolor='Black',
+        showsubunits=True
+    ),
+    title='Accidents by State Over Time'
+)
+
+# Step 8: Display the map in Streamlit
 st.plotly_chart(fig, use_container_width=True)
 
-
-# top_states_name = data['State'].value_counts().nlargest(10).index
-# top_states = data[data['State'].isin(top_states_name)]
