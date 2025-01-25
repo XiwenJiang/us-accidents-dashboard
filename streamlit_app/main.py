@@ -235,3 +235,40 @@ fig.update_layout(
 # Display the map in Streamlit
 st.plotly_chart(fig, use_container_width=True)
 
+
+st.subheader("Project Description")
+st.write("""
+    This project focuses on conducting an in-depth visual analysis of traffic accidents to identify accident hotspots, 
+    examine casualty trends, uncover patterns, and derive cause-and-effect relationships. The study leverages a 
+    large-scale dataset containing approximately 3.5 million traffic accident records across the contiguous United 
+    States over the past five years. Each record includes a wide range of attributes, such as location, time, weather 
+    conditions, natural language descriptions, points-of-interest, and other contextual factors.
+# """)
+# st.subheader("Why This Study is Important")
+# st.write("""
+#     According to data from the Driver Knowledge website, approximately 6 million car accidents occur annually in 
+#     the United States, resulting in over 90 fatalities each day. Furthermore, around 3 million people are injured 
+#     in these accidents each year, with 2 million suffering permanent injuries. These alarming statistics highlight 
+#     the critical need to better understand and address traffic accidents. This motivated me to undertake this study 
+#     to explore the causes and consequences of traffic accidents across the United States.
+# """)
+st.subheader("Study Goals")
+st.write("""
+    The primary objective of this study is to raise awareness about traffic safety and highlight the importance of 
+    preventive measures. Using intuitive and interactive visualizations, I aim to shed light on accident trends, 
+    identify the underlying causes, and evaluate the impact of traffic-calming measures. By showcasing these insights, 
+    my goal is to propose actionable solutions to improve public safety, optimize transportation systems, and ultimately 
+    reduce the frequency and severity of traffic accidents.
+""")
+
+st.subheader("Research Questions:")
+st.write("""
+    In order to accomplish my goal from this study, I am attempting to answer the folowing questions:         
+    1. What are the top 10 states with highest number of traffic accidents?       
+    2. Why the number of traffic accidents is high in those states?       
+    3. How does the severity level differ in those states?
+    4. Where the most traffic accidents happen in different geographic levels (Region, State, City, Airport code, and Zipcode)? 
+    5. What is the impact of weather conditions on the number of traffic accidents?
+    6. What is the impact of traffic calming, traffic signal, traffic bump, and traffic loop on the number of accidents?
+    7. What effect do different time scales have on traffic accidents?
+ """)
