@@ -68,27 +68,22 @@ fig = px.bar(
     orientation='h',
     custom_data=["Tooltip"],  # Pass tooltip data
     hover_data={"Tooltip"},
-    category_orders={"State": state_severity_counts['State'].unique()}
+    category_orders={"State": state_severity_counts['State'].unique(),
+                     "Severity": ['Critical', 'High', 'Medium', 'Low']}
 )
 
 fig.update_layout(
     yaxis_title="State",
     xaxis_title="Accident Count",
     height = 1000,
-    margin={"r": 0, "t": 50, "l": 0, "b": 50}  # Adjust margins for better fit
-)
-
-fig.update_layout(
-    xaxis2=dict(
-        title="",  # No title for the secondary axis
-        ticks="outside",  # External ticks
-        tickmode="auto",  # Automatic tick mode
-        overlaying="x",  # Overlay on the same x-axis
-        side="top",  # Place ticks at the top
-        showline=True,  # Show the axis line
-        showgrid=False,  # No grid for the top axis
-        tickfont=dict(size=10),  # Adjust tick font size (optional)
+    margin={"r": 0, "t": 50, "l": 0, "b": 50},  # Adjust margins for better fit
+    legend=dict(
+        yanchor="top",
+        y=0.95,
+        xanchor="right",
+        x=0.9
     )
 )
+
 
 st.plotly_chart(fig, use_container_width=True)
