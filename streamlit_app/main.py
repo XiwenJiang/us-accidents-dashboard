@@ -1,7 +1,9 @@
+
+
 import streamlit as st
 import plotly.express as px
 import pandas as pd
-st.title("Welcome to the US Accidents Dashboard!")
+
 
 us_states = {'AK': 'Alaska',
  'AL': 'Alabama',
@@ -152,8 +154,12 @@ def load_data():
 
     return data
 
-data = load_data()
+st.session_state.data = load_data()
 
+
+
+st.title("Welcome to the US Accidents Dashboard!")
+data = st.session_state.data
 
 
 state_yearly_accidents = data.groupby(['State_Code', 'Year']).agg({'ID': 'count'}).reset_index()
@@ -209,7 +215,7 @@ fig = px.scatter_mapbox(
     },
     animation_frame="Year",
     color_continuous_scale="Plasma",
-    size_max=60,
+    size_max=80,
     title="Accident Locations by State on the Map",
 )
 
