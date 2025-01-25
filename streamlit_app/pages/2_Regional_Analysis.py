@@ -8,12 +8,27 @@ st.write("This page will include state-specific statistics and visualizations.")
 
 data = st.session_state.data
 
+st.sidebar.title("Select Filters")
+years = data['Year'].unique().tolist()
+years.sort()
+years.insert(0, 'All Years')
+selected_years = st.sidebar.multiselect(
+    "Select Year", years, default=years[0]  # Default to all years
+)
+
+if 'All Years' not in selected_years:
+    filtered_data = data[data['Year'].isin(selected_years)]
+else:
+    filtered_data = data
+
+
+
 # Aggregate accident counts by State and Severity
-state_severity_counts = data.groupby(['State', 'Severity']).agg({'ID': 'count'}).reset_index()
+state_severity_counts = filtered_data.groupby(['State', 'Severity']).agg({'ID': 'count'}).reset_index()
 state_severity_counts.columns = ['State', 'Severity', 'Accident_Count']
 
 # Compute total counts for each state and percentages
-state_total_counts = data.groupby('State').agg({'ID': 'count'}).reset_index()
+state_total_counts = filtered_data.groupby('State').agg({'ID': 'count'}).reset_index()
 state_total_counts.columns = ['State', 'Total_Accidents']
 
 # Merge total counts back to the severity-level data
@@ -41,7 +56,8 @@ def get_tooltip(row):
     )
 
 state_severity_counts['Tooltip'] = state_severity_counts.apply(get_tooltip, axis=1)
-state_severity_counts
+
+
 
 
 fig = px.bar(
@@ -59,9 +75,20 @@ fig.update_layout(
     yaxis_title="State",
     xaxis_title="Accident Count",
     height = 1000,
-    xaxis_tickangle=45,  # Rotate x-axis labels for readability
     margin={"r": 0, "t": 50, "l": 0, "b": 50}  # Adjust margins for better fit
 )
 
+fig.update_layout(
+    xaxis2=dict(
+        title="",  # No title for the secondary axis
+        ticks="outside",  # External ticks
+        tickmode="auto",  # Automatic tick mode
+        overlaying="x",  # Overlay on the same x-axis
+        side="top",  # Place ticks at the top
+        showline=True,  # Show the axis line
+        showgrid=False,  # No grid for the top axis
+        tickfont=dict(size=10),  # Adjust tick font size (optional)
+    )
+)
 
 st.plotly_chart(fig, use_container_width=True)
