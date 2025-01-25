@@ -1,43 +1,67 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
 st.title("State Analysis")
 st.write("Explore accident data by state.")
 st.write("This page will include state-specific statistics and visualizations.")
 
 data = st.session_state.data
-#st.write(data.head())
+
+# Aggregate accident counts by State and Severity
+state_severity_counts = data.groupby(['State', 'Severity']).agg({'ID': 'count'}).reset_index()
+state_severity_counts.columns = ['State', 'Severity', 'Accident_Count']
+
+# Compute total counts for each state and percentages
+state_total_counts = data.groupby('State').agg({'ID': 'count'}).reset_index()
+state_total_counts.columns = ['State', 'Total_Accidents']
+
+# Merge total counts back to the severity-level data
+state_severity_counts = state_severity_counts.merge(state_total_counts, on='State')
+
+# Calculate percentages
+state_severity_counts['Percentage'] = (state_severity_counts['Accident_Count'] / state_severity_counts['Total_Accidents']) * 100
+
+# Compute rank based on total accidents
+state_total_counts['Rank'] = state_total_counts['Total_Accidents'].rank(ascending=False).astype(int)
+
+# Merge ranks back to the severity-level data
+state_severity_counts = state_severity_counts.merge(state_total_counts[['State', 'Rank']], on='State')
+state_severity_counts.sort_values('Rank', ascending=True, inplace=True)
 
 
-state_yearly_accidents = data.groupby(['State_Code', 'Year']).agg({'ID': 'count'}).reset_index()
-state_yearly_accidents.columns = ['State_Code', 'Year', 'Accident_Count']
+# Create the tooltip column
+def get_tooltip(row):
+    return (
+        f"State: {row['State']}<br>"
+        f"Total Accidents: {row['Total_Accidents']}<br>"
+        f"Rank: {row['Rank']}<br>"
+        f"Severity: {row['Severity']}<br>"
+        f"Accident Count: {row['Accident_Count']} ({row['Percentage']:.2f}%)<br>"
+    )
 
-state_yearly_severity_counts = data.groupby(['State_Code', 'Year', 'Severity']).agg({'ID': 'count'}).reset_index()
-state_yearly_severity_counts.columns = ['State_Code', 'Year', 'Severity', 'Severity_Count']
-
-state_yearly_data = pd.merge(state_yearly_accidents, state_yearly_severity_counts, on=['State_Code', 'Year'], how='left')
-
-def get_severity_count(state_code, severity):
-    # Filter the data for the state and severity
-    severity_count = state_yearly_data[(state_yearly_data['State_Code'] == state_code) & 
-                                       (state_yearly_data['Severity'] == severity)]
-    
-    # If the severity count exists, return it; otherwise, return 0
-    if not severity_count.empty:
-        return severity_count['Severity_Count'].values[0]
-    else:
-        return 0  # If no data, return 0
-
-# Generate the tooltip for each row
-state_yearly_data['tooltip'] = state_yearly_data.apply(
-    lambda row: f"State: {row['State_Code']}<br>Total Accidents: {row['Accident_Count']}<br>"
-                f"Low: {get_severity_count(row['State_Code'], 'Low')}<br>"
-                f"Medium: {get_severity_count(row['State_Code'], 'Medium')}<br>"
-                f"High: {get_severity_count(row['State_Code'], 'High')}<br>"
-                f"Critical: {get_severity_count(row['State_Code'], 'Critical')}",
-    axis=1)
+state_severity_counts['Tooltip'] = state_severity_counts.apply(get_tooltip, axis=1)
+state_severity_counts
 
 
+fig = px.bar(
+    state_severity_counts,
+    y= "State",
+    x = "Accident_Count",
+    color='Severity',
+    orientation='h',
+    custom_data=["Tooltip"],  # Pass tooltip data
+    hover_data={"Tooltip"},
+    category_orders={"State": state_severity_counts['State'].unique()}
+)
 
-st.write(state_yearly_data.head())
-st.write(state_yearly_accidents.info())
+fig.update_layout(
+    yaxis_title="State",
+    xaxis_title="Accident Count",
+    height = 1000,
+    xaxis_tickangle=45,  # Rotate x-axis labels for readability
+    margin={"r": 0, "t": 50, "l": 0, "b": 50}  # Adjust margins for better fit
+)
+
+
+st.plotly_chart(fig, use_container_width=True)
