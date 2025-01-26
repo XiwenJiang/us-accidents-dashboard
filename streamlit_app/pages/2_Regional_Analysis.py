@@ -29,6 +29,7 @@ else:
     filtered_data = data
 
 
+col1, col2 = st.columns([1,1])
 
 # Aggregate accident counts by State and Severity
 state_severity_counts = filtered_data.groupby(['State', 'Severity']).agg({'ID': 'count'}).reset_index()
@@ -92,8 +93,8 @@ fig.update_layout(
     )
 )
 
-
-st.plotly_chart(fig, use_container_width=True)
+with col1:
+    st.plotly_chart(fig, use_container_width=True)
 
 
 """
@@ -212,4 +213,5 @@ folium.GeoJson(
     tooltip=tooltip
 ).add_to(m)
 
-st_folium(m, width=725)
+with col2:
+    st_folium(m, width=725)
