@@ -1,6 +1,13 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import folium
+import requests
+from folium.features import GeoJsonTooltip
+
+from streamlit_folium import st_folium
+
+
 
 st.title("State Analysis")
 st.write("Explore accident data by state.")
@@ -87,3 +94,122 @@ fig.update_layout(
 
 
 st.plotly_chart(fig, use_container_width=True)
+
+
+"""
+Adding Choropleth plot 
+"""
+
+state_yearly_accidents = filtered_data.groupby(['State']).agg({'ID': 'count'}).reset_index()
+state_yearly_accidents.columns = ['State','Accident_Count']
+
+# Step 4: Aggregate accident counts by severity for each state and year
+state_yearly_severity_counts = filtered_data.groupby(['State', 'Severity']).agg({'ID': 'count'}).reset_index()
+state_yearly_severity_counts.columns = ['State', 'Severity', 'Severity_Count']
+
+# Step 5: Merge the total accident counts and severity counts into one DataFrame
+state_yearly_data = pd.merge(state_yearly_accidents, state_yearly_severity_counts, on=['State'], how='left')
+all_states = [
+    "Alabama", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", "Florida",
+    "Georgia", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine",
+    "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana",
+    "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina",
+    "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
+    "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia",
+    "Wisconsin", "Wyoming"
+]
+all_states_df = pd.DataFrame({"State": all_states})
+state_yearly_data = pd.merge(all_states_df, state_yearly_data, on="State", how="left")
+
+
+# Create the tooltip column with all severity counts
+def get_severity_count(state_code, severity):
+    # Filter the data for the state and severity
+    severity_count = state_yearly_data[(state_yearly_data['State'] == state_code) & 
+                                       (state_yearly_data['Severity'] == severity)]
+    
+    # If the severity count exists, return it; otherwise, return 0
+    if not severity_count.empty:
+        return severity_count['Severity_Count'].values[0]
+    else:
+        return 0  # If no data, return 0
+
+# Generate the tooltip for each row
+state_yearly_data['tooltip'] = state_yearly_data.apply(
+    lambda row: f"Total Accidents: {row['Accident_Count']}<br>"
+                f"Low: {get_severity_count(row['State'], 'Low')}<br>"
+                f"Medium: {get_severity_count(row['State'], 'Medium')}<br>"
+                f"High: {get_severity_count(row['State'], 'High')}<br>"
+                f"Critical: {get_severity_count(row['State'], 'Critical')}",
+    axis=1)
+
+
+state_yearly_data = state_yearly_data.sort_values(by=["Accident_Count"], ascending=[False])
+
+from pandas.api.types import CategoricalDtype
+severity_order = CategoricalDtype(categories=['Critical', 'High', 'Medium', 'Low'], ordered=True)
+
+# Apply the custom category order to the Severity column
+state_yearly_data['Severity'] = state_yearly_data['Severity'].astype(severity_order)
+
+
+state_yearly_data = state_yearly_data[['State', 'Accident_Count', 'tooltip']].drop_duplicates()
+state_yearly_data['Accident_Count'] = state_yearly_data['Accident_Count'].fillna(0)
+
+adjusted_data = state_yearly_data.copy()
+adjusted_data.loc[adjusted_data['State'] == 'California', 'Accident_Count'] = min(
+    adjusted_data[adjusted_data['State'] != 'California']['Accident_Count'].max() * 1.2,
+    adjusted_data.loc[adjusted_data['State'] == 'California', 'Accident_Count'].values[0]
+)
+
+geojson_file = "https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json"
+geojson_data = requests.get(geojson_file).json()
+
+m = folium.Map(location=[37.0902, -95.7129], zoom_start=4, tiles="cartodbpositron")
+
+# Merge the DataFrame into the GeoJSON
+for feature in geojson_data["features"]:
+    state_name = feature["properties"]["name"]  # GeoJSON state name
+    # Match state name and add Accident_Count and tooltip data
+    match = state_yearly_data[state_yearly_data["State"] == state_name]
+    if not match.empty:
+        feature["properties"]["Accident_Count"] = int(match["Accident_Count"].iloc[0])
+        feature["properties"]["tooltip"] = match["tooltip"].values[0]
+    else:
+        feature["properties"]["Accident_Count"] = 0
+        feature["properties"]["tooltip"] = "No data available"
+
+folium.Choropleth(
+    geo_data=geojson_data,  # GeoJSON data for US states
+    data = adjusted_data,  # Data containing accident counts
+    columns=["State", "Accident_Count"],  # Columns to match and color by
+    key_on="feature.properties.name",  # GeoJSON key to match State_Code (usually in the 'id' field)
+    fill_opacity=0.7,
+    line_opacity=0.2,
+    fill_color="viridis",
+    legend_name="Accident Count by State"
+).add_to(m)
+
+
+tooltip = folium.GeoJsonTooltip(
+    fields=["name", "tooltip"],
+    aliases=["State:", "Severity Counts:"],
+    localize=True,
+    sticky=True,
+    labels=True,
+    style="""
+        background-color: #F0EFEF;
+        border: 2px solid black;
+        border-radius: 3px;
+        box-shadow: 3px;
+    """,
+    max_width=800,
+)
+
+
+folium.GeoJson(
+    geojson_data,
+    tooltip=tooltip
+).add_to(m)
+
+st_folium(m, width=725)
