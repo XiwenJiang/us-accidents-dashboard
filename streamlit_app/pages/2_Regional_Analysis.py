@@ -61,9 +61,12 @@ us_cities_coords = {
 }
 
 
-st.title("State Analysis")
-st.write("Explore accident data by state.")
-st.write("This page will include state-specific statistics and visualizations.")
+st.title("Location Analysis")
+# st.write("""
+#          In this dataset, we have different attributes like City, State, Timezone
+#          and even street for each accident records. Here we will analyze these four
+#          features based on the no. of cases for each distinct location.
+#          """)
 
 data = st.session_state.data
 
@@ -366,4 +369,11 @@ with col2:
     st.markdown(f"#### Heatmap of Accidents in {selected_city}")
     st_folium(map_us_heatmap, width=800, height=400)
 
-
+st.subheader("Insights:")
+st.write("""
+         1. In US, :blue[California] is the state :blue[with highest no. of road accidents] in past 5 years.
+         2. About :blue[30%] of the total accident records of past 5 years in US is only from :blue[California].
+         3. Florida is the 2nd highest (10% cases) state for no. road accidents in US.
+         4. :blue[Miami] is the city with :blue[highest (2.42%)] no. of road accidents in US (2016-2020).
+         5. Around :blue[14%] accident records of past 5 years are only from these :blue[10 cities] out of 10,657 cities in US (as per the dataset).
+         """)
