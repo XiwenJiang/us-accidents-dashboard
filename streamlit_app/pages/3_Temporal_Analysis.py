@@ -10,42 +10,6 @@ st.write("This page will feature visualizations for time-based trends.")
 data = st.session_state.data
 
 
-# Define the desired order for severity levels
-severity_order = ['Critical', 'High', 'Medium', 'Low']
-
-# Convert the 'Severity' column to a categorical type with the specified order
-data['Severity'] = pd.Categorical(data['Severity'], categories=severity_order, ordered=True)
-
-# Ensure 'Start_Time' is in datetime format
-data['Start_Time'] = pd.to_datetime(data['Start_Time'], errors='coerce')
-
-# Extract year from 'Start_Time'
-data['Year'] = data['Start_Time'].dt.year
-
-# Group by year and severity, and count the number of accidents
-accidents_per_year_severity = data.groupby(['Year', 'Severity']).size().reset_index(name='Count')
-
-# Plotting the data using Plotly
-yr_svrt_fig = px.bar(accidents_per_year_severity, x='Year', y='Count', color='Severity', 
-             title='Number of Accidents per Year by Severity',
-             labels={'Year': 'Year', 'Count': 'Number of Accidents', 'Severity': 'Severity'},
-             category_orders={'Severity': severity_order},
-             barmode='group')
-
-# Group by year to get the total number of accidents per year
-accidents_per_year = data.groupby('Year').size().reset_index(name='Total_Count')
-
-# Add a line chart on top of the bar chart
-yr_svrt_fig.add_trace(go.Scatter(x=accidents_per_year['Year'], 
-                         y=accidents_per_year['Total_Count'],
-                         mode='lines+markers', 
-                         name='Total Accidents', 
-                         line=dict(color='green', dash = 'dashdot', width = 2)
-                         ))
-
-
-# Display the plot in Streamlit
-st.plotly_chart(yr_svrt_fig)
 
 
 
@@ -180,6 +144,43 @@ st.plotly_chart(racing_bar)
 col1, col2 = st.columns(2)
 
 with col1:
+    # Define the desired order for severity levels
+    severity_order = ['Critical', 'High', 'Medium', 'Low']
+
+    # Convert the 'Severity' column to a categorical type with the specified order
+    data['Severity'] = pd.Categorical(data['Severity'], categories=severity_order, ordered=True)
+
+    # Ensure 'Start_Time' is in datetime format
+    data['Start_Time'] = pd.to_datetime(data['Start_Time'], errors='coerce')
+
+    # Extract year from 'Start_Time'
+    data['Year'] = data['Start_Time'].dt.year
+
+    # Group by year and severity, and count the number of accidents
+    accidents_per_year_severity = data.groupby(['Year', 'Severity']).size().reset_index(name='Count')
+
+    # Plotting the data using Plotly
+    yr_svrt_fig = px.bar(accidents_per_year_severity, x='Year', y='Count', color='Severity', 
+                title='Number of Accidents per Year by Severity',
+                labels={'Year': 'Year', 'Count': 'Number of Accidents', 'Severity': 'Severity'},
+                category_orders={'Severity': severity_order},
+                barmode='group')
+
+    # Group by year to get the total number of accidents per year
+    accidents_per_year = data.groupby('Year').size().reset_index(name='Total_Count')
+
+    # Add a line chart on top of the bar chart
+    yr_svrt_fig.add_trace(go.Scatter(x=accidents_per_year['Year'], 
+                            y=accidents_per_year['Total_Count'],
+                            mode='lines+markers', 
+                            name='Total Accidents', 
+                            line=dict(color='green', dash = 'dashdot', width = 2)
+                            ))
+
+
+    # Display the plot in Streamlit
+    st.plotly_chart(yr_svrt_fig)
+
     # Extract year and month, create datetime series
     data['YearMonth'] = pd.to_datetime(data['Start_Time'].dt.strftime('%Y-%m'))
     accidents_per_month = data.groupby('YearMonth').size().reset_index(name='Count')
