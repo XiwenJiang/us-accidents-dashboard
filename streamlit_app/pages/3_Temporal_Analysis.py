@@ -62,6 +62,11 @@ top_10_states = (state_time_counts.groupby('YearQuarter')
                        .sort_values('Count', ascending=True))
                  .reset_index(drop=True))
 
+# Get severity counts for each state and time period
+severity_counts = (data.groupby(['State', 'YearQuarter', 'Severity'])
+                      .size()
+                      .reset_index(name='Severity_Count'))
+
 # Create base figure
 racing_bar = go.Figure()
 
@@ -76,17 +81,43 @@ racing_bar.add_trace(
     )
 )
 
+# Create tooltip function
+def get_racing_tooltip(state, yearquarter):
+    state_data = severity_counts[(severity_counts['State'] == state) & 
+                               (severity_counts['YearQuarter'] == yearquarter)]
+    tooltip = f"State: {state}<br>"
+    tooltip += f"Time: {yearquarter}<br>"
+    total = state_data['Severity_Count'].sum()
+    tooltip += f"Total Accidents: {total}<br>"
+    
+    for _, row in state_data.iterrows():
+        pct = (row['Severity_Count'] / total * 100)
+        tooltip += f"{row['Severity']}: {row['Severity_Count']} ({pct:.1f}%)<br>"
+    
+    return tooltip
+
 # Create and add frames
 frames = []
 for yearquarter in top_10_states['YearQuarter'].unique():
     frame_data = top_10_states[top_10_states['YearQuarter'] == yearquarter].sort_values('Count', ascending=True)
+    
+    # Create tooltips for each state in frame
+    tooltips = [get_racing_tooltip(state, yearquarter) for state in frame_data['State']]
+    
+    # Format total count for text display
+    text_display = frame_data['Count'].apply(lambda x: f'{x:,}')
+    
     frames.append(
         go.Frame(
             data=[go.Bar(
                 x=frame_data['Count'],
                 y=frame_data['State'],
                 orientation='h',
-                marker_color=px.colors.qualitative.Set3
+                marker_color=px.colors.qualitative.Set3,
+                text=text_display,  # Display total count
+                textposition='outside',  # Show text at end of bars
+                hovertext=tooltips,  # Show detailed info on hover
+                hoverinfo='text'
             )],
             name=yearquarter,
             layout=go.Layout(
