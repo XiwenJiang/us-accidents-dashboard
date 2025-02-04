@@ -73,6 +73,103 @@ monthly_trend.update_layout(
 # Display plot
 st.plotly_chart(monthly_trend)
 
+# Extract year and quarter from Start_Time
+data['Quarter'] = data['Start_Time'].dt.quarter
+data['YearQuarter'] = data['Year'].astype(str) + '-Q' + data['Quarter'].astype(str)
+
+# Group by state and time period
+state_time_counts = data.groupby(['State', 'Year', 'Quarter', 'YearQuarter'])['ID'].count().reset_index(name='Count')
+
+# Get top 10 states for each time period and sort them
+top_10_states = (state_time_counts.groupby('YearQuarter')
+                 .apply(lambda x: x.nlargest(10, 'Count')
+                       .sort_values('Count', ascending=True))
+                 .reset_index(drop=True))
+
+# Create base figure
+racing_bar = go.Figure()
+
+# Add initial data
+initial_data = top_10_states[top_10_states['YearQuarter'] == top_10_states['YearQuarter'].iloc[0]]
+racing_bar.add_trace(
+    go.Bar(
+        x=initial_data['Count'],
+        y=initial_data['State'],
+        orientation='h',
+        marker_color=px.colors.qualitative.Set3
+    )
+)
+
+# Create and add frames
+frames = []
+for yearquarter in top_10_states['YearQuarter'].unique():
+    frame_data = top_10_states[top_10_states['YearQuarter'] == yearquarter].sort_values('Count', ascending=True)
+    frames.append(
+        go.Frame(
+            data=[go.Bar(
+                x=frame_data['Count'],
+                y=frame_data['State'],
+                orientation='h',
+                marker_color=px.colors.qualitative.Set3
+            )],
+            name=yearquarter,
+            layout=go.Layout(
+                yaxis=dict(
+                    categoryarray=frame_data['State'].tolist()
+                )
+            )
+        )
+    )
+
+racing_bar.frames = frames
+
+# Get max count for x-axis range
+max_count = top_10_states['Count'].max()
+
+# Update layout with x-axis range
+racing_bar.update_layout(
+    title='Top 10 States with Most Accidents (2016-2023)',
+    xaxis_title='Number of Accidents',
+    yaxis_title='State',
+    showlegend=False,
+    xaxis=dict(range=[0, max_count * 1.1]),
+    updatemenus=[dict(
+        type='buttons',
+        showactive=False,
+        buttons=[
+            dict(
+                label='Play',
+                method='animate',
+                args=[None, dict(
+                    frame=dict(duration=1000, redraw=True),
+                    fromcurrent=True,
+                    mode='immediate'
+                )]
+            ),
+            dict(
+                label='Stop',
+                method='animate',
+                args=[[None], dict(
+                    frame=dict(duration=0, redraw=False),
+                    mode='immediate',
+                    transition=dict(duration=0)
+                )]
+            )
+        ]
+    )],
+    sliders=[{
+        'currentvalue': {'prefix': 'Year-Quarter: '},
+        'steps': [
+            {'args': [[f], {'frame': {'duration': 1000, 'redraw': True},
+                          'mode': 'immediate'}],
+             'label': f,
+             'method': 'animate'} for f in top_10_states['YearQuarter'].unique()
+        ]
+    }]
+)
+
+st.plotly_chart(racing_bar)
+
 col1, col2 = st.columns(2)
 
 with col1:
