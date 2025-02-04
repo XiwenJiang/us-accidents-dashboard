@@ -284,7 +284,7 @@ with col1:
     st.plotly_chart(top10_bar, use_container_width=True)
     st.markdown(f"#### Top 10 Cities in US with most no. of Road Accident Cases in {selected_years}")
 
-    st_folium(m, width=725,height=400)
+    st_folium(m, width=725,height=400, returned_objects=[])
 
 
 city_df = pd.DataFrame(filtered_data['City'].value_counts()).reset_index().rename(columns={'count':'Accident_Count'})
