@@ -77,4 +77,64 @@ with col1:
 
 with col2:
     accidents_per_hr = data.groupby('Hour').size().reset_index(name = "Total_Count")
-    accidents_per_hr
+
+    hour_barfig = px.bar(accidents_per_hr,
+                         x = 'Hour',
+                         y = 'Total_Count',
+                         title = 'Accident by Hour',
+                         color='Hour',
+                         color_continuous_scale='Tealgrn')
+    
+    hour_barfig.update_layout(
+        annotations=[
+            dict(
+                x=7,  # Text position x
+                y=accidents_per_hr['Total_Count'].max() * 1.1,  # Text position y
+                text="Morning Peak",
+                showarrow=False,
+                arrowhead=1
+            ),
+            dict(
+                x=16,  # Text position x
+                y=accidents_per_hr['Total_Count'].max() * 1.1,  # Text position y
+                text="Evening Peak",
+                showarrow=False,
+                arrowhead=1
+            ),
+            dict(
+                ax=4,  # Text position x
+                ay=accidents_per_hr['Total_Count'].max() * 0.7,  # Text position y
+                text="go to work",
+                showarrow=True,
+                arrowhead=2,
+                x=6,  # Arrow end x
+                y=1000,  # Arrow end y
+                axref='x',  # Use x-axis coordinates
+                ayref='y'   # Use y-axis coordinates
+            ),
+            dict(
+                ax=20,  # Text position x
+                ay=accidents_per_hr['Total_Count'].max() * 0.7,  # Text position y
+                text="get off work",
+                showarrow=True,
+                arrowhead=2,
+                x=16,  # Arrow end x
+                y=1000,   # Arrow end y
+                axref='x',  # Use x-axis coordinates
+                ayref='y'   # Use y-axis coordinates
+            )
+        ]
+    )
+
+    hour_barfig.update_layout(
+        showlegend = False,
+        xaxis=dict(
+        tickmode='array',
+        ticktext=[f'{i:02d}:00' for i in range(24)],  # Format as HH:00
+        tickvals=list(range(24)),
+        title='Hour of Day'
+        ),
+        yaxis=dict(title='Number of Accidents')
+    )
+
+    st.plotly_chart(hour_barfig)
