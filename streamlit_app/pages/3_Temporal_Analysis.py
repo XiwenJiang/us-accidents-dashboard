@@ -47,6 +47,31 @@ yr_svrt_fig.add_trace(go.Scatter(x=accidents_per_year['Year'],
 # Display the plot in Streamlit
 st.plotly_chart(yr_svrt_fig)
 
+# Extract year and month, create datetime series
+data['YearMonth'] = pd.to_datetime(data['Start_Time'].dt.strftime('%Y-%m'))
+accidents_per_month = data.groupby('YearMonth').size().reset_index(name='Count')
+
+# Create monthly trend plot
+monthly_trend = px.line(accidents_per_month, 
+                       x='YearMonth', 
+                       y='Count',
+                       title='Monthly Accident Trends (2016-2023)',
+                       markers=True)
+
+# Update layout
+monthly_trend.update_layout(
+    xaxis_title='Year-Month',
+    yaxis_title='Number of Accidents',
+    xaxis=dict(
+        tickformat='%Y-%m',
+        tickangle=45,
+        tickmode='auto',
+        nticks=30
+    )
+)
+
+# Display plot
+st.plotly_chart(monthly_trend)
 
 col1, col2 = st.columns(2)
 
