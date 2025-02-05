@@ -52,13 +52,32 @@ def download_file():
     return st.session_state.data_path if os.path.exists(st.session_state.data_path) else None
 
 
+
+def download_with_wget():
+    url = "https://drive.google.com/uc?id=1ZiYhNqrBPdDPndaOpJcHbXghC8052CK5&export=download"
+
+    if os.path.exists(st.session_state.data_path):
+        os.remove(st.session_state.data_path)
+
+    st.write(f"Downloading file using wget: {st.session_state.data_path}")
+
+    # ✅ 使用 `wget` 代替 `gdown`
+    os.system(f"wget --no-check-certificate '{url}' -O {st.session_state.data_path}")
+
+    if not os.path.exists(st.session_state.data_path):
+        st.error(f"File not found after wget download: {st.session_state.data_path}")
+        return None
+
+    st.write(f"File downloaded successfully using wget: {st.session_state.data_path}")
+    return st.session_state.data_path
+
 @st.cache_data
 def load_data():
     # Check if data is already in session state
     if 'data' not in st.session_state:
         # Download and load data
         # file_path = download_file_from_google_drive()
-        file_path = download_file()
+        file_path = download_with_wget()
         data = pd.read_csv(file_path)
         
         # Store in session state
