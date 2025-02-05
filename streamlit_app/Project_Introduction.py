@@ -1,7 +1,37 @@
+import os
+import gdown
 import streamlit as st
 import plotly.express as px
 import pandas as pd
-import gdown
+
+# Initialize session state for data path
+if "data_path" not in st.session_state:
+    st.session_state.data_path = "US_Accidents_March23_sampled_500k.csv"
+
+def download_file_from_google_drive():
+    url = "https://drive.google.com/file/d/1ZiYhNqrBPdDPndaOpJcHbXghC8052CK5/view?usp=sharing"
+    file_id = url.split('/')[-2]
+    direct_url = f'https://drive.google.com/uc?id={file_id}'
+    
+    # Check if file exists
+    if not os.path.exists(st.session_state.data_path):
+        gdown.download(direct_url, st.session_state.data_path, quiet=False)
+    
+    return st.session_state.data_path
+
+@st.cache_data
+def load_data():
+    # Check if data is already in session state
+    if 'data' not in st.session_state:
+        # Download and load data
+        file_path = download_file_from_google_drive()
+        data = pd.read_csv(file_path)
+        
+        # Store in session state
+        st.session_state.data = data
+    
+    return st.session_state.data
+
 st.set_page_config(layout="wide")
 
 us_states = {'AK': 'Alaska',
@@ -117,19 +147,6 @@ state_coordinates = {
 
 
 def state_code(state_code): return us_states[state_code]
-
-# Download file from Google Drive
-def download_file_from_google_drive():
-    url = "https://drive.google.com/file/d/1ZiYhNqrBPdDPndaOpJcHbXghC8052CK5/view?usp=sharing"
-    output = 'US_Accidents_March23_sampled_500k.csv'
-    
-    # Convert sharing URL to direct download URL
-    file_id = url.split('/')[-2]
-    direct_url = f'https://drive.google.com/uc?id={file_id}'
-    
-    # Download file
-    gdown.download(direct_url, output, quiet=False)
-    return output
 
 # Load dataset
 @st.cache_data
