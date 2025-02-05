@@ -7,7 +7,7 @@ import pandas as pd
 
 # Initialize session state for data path
 
-TEMP_DIR = "tmp"
+TEMP_DIR = "/tmp"
 if not os.path.exists(TEMP_DIR):
     os.makedirs(TEMP_DIR)
 
