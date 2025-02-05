@@ -146,24 +146,45 @@ def create_kde_plot(data, column):
     
     return fig
 
-# Create 3-column layout
-col1, col2, col3 = st.columns(3)
+# Add "All" option to weather conditions list
+all_option = ["All Conditions"]
+condition_options = all_option + top_conditions
 
-# Column 1: Temperature & Humidity
-temp_fig = create_kde_plot(weather, 'Temperature(F)')
-humid_fig = create_kde_plot(weather, 'Humidity(%)')
-col1.plotly_chart(temp_fig, use_container_width=True)
-col1.plotly_chart(humid_fig, use_container_width=True)
+# Add multiselect widget for weather conditions
+selected_conditions = st.multiselect(
+    'Select Weather Conditions',
+    options=condition_options,
+    default=condition_options[:6],  # Default to show all
+    key='weather_select'
+)
 
-# Column 2: Visibility & Precipitation
-vis_fig = create_kde_plot(weather, 'Visibility(mi)')
-precip_fig = create_kde_plot(weather, 'Precipitation(in)')
-col2.plotly_chart(vis_fig, use_container_width=True)
-col2.plotly_chart(precip_fig, use_container_width=True)
+# Filter data based on selection
+if selected_conditions:
+    if "All Weather Conditions" in selected_conditions:
+        weather_filtered = weather  # Use all data
+    else:
+        weather_filtered = weather[weather['Weather_Condition'].isin(selected_conditions)]
+    
+    # Create distribution plots for filtered data
+    col1, col2, col3 = st.columns(3)
 
-# Column 3: Pressure & Wind Speed
-press_fig = create_kde_plot(weather, 'Pressure(in)')
-wind_fig = create_kde_plot(weather, 'Wind_Speed(mph)')
-col3.plotly_chart(press_fig, use_container_width=True)
-col3.plotly_chart(wind_fig, use_container_width=True)
+    # Column 1: Temperature & Humidity
+    temp_fig = create_kde_plot(weather_filtered, 'Temperature(F)')
+    humid_fig = create_kde_plot(weather_filtered, 'Humidity(%)')
+    col1.plotly_chart(temp_fig, use_container_width=True)
+    col1.plotly_chart(humid_fig, use_container_width=True)
+
+    # Column 2: Visibility & Precipitation
+    vis_fig = create_kde_plot(weather_filtered, 'Visibility(mi)')
+    precip_fig = create_kde_plot(weather_filtered, 'Precipitation(in)')
+    col2.plotly_chart(vis_fig, use_container_width=True)
+    col2.plotly_chart(precip_fig, use_container_width=True)
+
+    # Column 3: Pressure & Wind Speed
+    press_fig = create_kde_plot(weather_filtered, 'Pressure(in)')
+    wind_fig = create_kde_plot(weather_filtered, 'Wind_Speed(mph)')
+    col3.plotly_chart(press_fig, use_container_width=True)
+    col3.plotly_chart(wind_fig, use_container_width=True)
+else:
+    st.warning('Please select at least one weather condition')
 
