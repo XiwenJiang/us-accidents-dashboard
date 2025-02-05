@@ -4,6 +4,7 @@ import streamlit as st
 import plotly.express as px
 import pandas as pd
 import time
+import requests
 
 
 # Initialize session state for data path
@@ -37,12 +38,27 @@ def download_file_from_google_drive():
         return None  
     return st.session_state.data_path
 
+def download_file():
+    url = "https://drive.google.com/uc?export=download&id=1ZiYhNqrBPdDPndaOpJcHbXghC8052CK5"
+    
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        with open(st.session_state.data_path, 'wb') as file:
+            for chunk in response.iter_content(chunk_size=1024):
+                file.write(chunk)
+    else:
+        st.error("Failed to download the file, please check Google Drive permissions.")
+    
+    return st.session_state.data_path if os.path.exists(st.session_state.data_path) else None
+
+
 @st.cache_data
 def load_data():
     # Check if data is already in session state
     if 'data' not in st.session_state:
         # Download and load data
-        file_path = download_file_from_google_drive()
+        # file_path = download_file_from_google_drive()
+        file_path = download_file()
         data = pd.read_csv(file_path)
         
         # Store in session state
