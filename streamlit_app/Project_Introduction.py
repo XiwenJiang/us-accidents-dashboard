@@ -6,8 +6,14 @@ import pandas as pd
 
 
 # Initialize session state for data path
+
+TEMP_DIR = "tmp"
+if not os.path.exists(TEMP_DIR):
+    os.makedirs(TEMP_DIR)
+
 if "data_path" not in st.session_state:
-    st.session_state.data_path = "/tmp/US_Accidents_March23_sampled_500k.csv"
+    st.session_state.data_path = os.path.join(TEMP_DIR, "US_Accidents_March23_sampled_500k.csv")
+
 
 def download_file_from_google_drive():
     url = "https://drive.google.com/file/d/1ZiYhNqrBPdDPndaOpJcHbXghC8052CK5/view?usp=sharing"
@@ -25,7 +31,7 @@ def download_file_from_google_drive():
     
     # Check if file exists
     if not os.path.exists(st.session_state.data_path):
-        st.error(f"File not found after download: {file_path}")
+        st.error(f"File not found after download: {st.session_state.data_path}")
         return None  
     return st.session_state.data_path
 
