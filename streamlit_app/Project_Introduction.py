@@ -3,6 +3,7 @@ import gdown
 import streamlit as st
 import plotly.express as px
 import pandas as pd
+import time
 
 
 # Initialize session state for data path
@@ -25,6 +26,7 @@ def download_file_from_google_drive():
 
     try:
         gdown.download(direct_url, st.session_state.data_path, quiet=False)
+        time.sleep(5)
     except Exception as e:
         st.error(f"Failed to download file: {e}")
         return None
