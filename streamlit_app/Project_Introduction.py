@@ -1,8 +1,7 @@
-
-
 import streamlit as st
 import plotly.express as px
 import pandas as pd
+import gdown
 st.set_page_config(layout="wide")
 
 us_states = {'AK': 'Alaska',
@@ -119,10 +118,27 @@ state_coordinates = {
 
 def state_code(state_code): return us_states[state_code]
 
+# Download file from Google Drive
+def download_file_from_google_drive():
+    url = "https://drive.google.com/file/d/1ZiYhNqrBPdDPndaOpJcHbXghC8052CK5/view?usp=sharing"
+    output = 'temp/US_Accidents_March23_sampled_500k.csv'
+    
+    # Convert sharing URL to direct download URL
+    file_id = url.split('/')[-2]
+    direct_url = f'https://drive.google.com/uc?id={file_id}'
+    
+    # Download file
+    gdown.download(direct_url, output, quiet=False)
+    return output
+
 # Load dataset
 @st.cache_data
 def load_data():
-    data = pd.read_csv('temp/US_Accidents_March23_sampled_500k.csv')
+    # Download file if not exists
+    file_path = download_file_from_google_drive()
+    
+    # Load and process data
+    data = pd.read_csv(file_path)
     # Select columns for analysis
     basic_columns = ['ID', 'Severity', 
                     'Start_Time', 'End_Time', 
