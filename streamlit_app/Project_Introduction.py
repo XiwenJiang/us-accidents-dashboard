@@ -25,7 +25,7 @@ def download_file_from_google_drive():
         os.remove(st.session_state.data_path)
 
     try:
-        gdown.download(direct_url, st.session_state.data_path, quiet=False)
+        gdown.download(direct_url, st.session_state.data_path, quiet=False, fuzzy= True)
         time.sleep(5)
     except Exception as e:
         st.error(f"Failed to download file: {e}")
