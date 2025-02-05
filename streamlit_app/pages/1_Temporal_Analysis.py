@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-st.title("Time Analysis")
+st.title("Temporal Analysis")
 st.write("Analyze accident trends over time.")
 st.write("This page will feature visualizations for time-based trends.")
 
@@ -108,7 +108,7 @@ racing_bar.update_layout(
                 label='Play',
                 method='animate',
                 args=[None, dict(
-                    frame=dict(duration=1000, redraw=True),
+                    frame=dict(duration=1000, redraw=False),
                     fromcurrent=True,
                     mode='immediate'
                 )]
@@ -125,9 +125,12 @@ racing_bar.update_layout(
         ]
     )],
     sliders=[{
-        'currentvalue': {'prefix': 'Year-Quarter: '},
+        'currentvalue': {'prefix': 'Year-Quarter: ', 'font':{"size": 20}, 'xanchor':"right"},
         'steps': [
-            {'args': [[f], {'frame': {'duration': 1000, 'redraw': True},
+            {'args': [[f], {'frame': {'duration': 1000, 'redraw': True, "easing": "cubic-in-out"},
+                            "pad": {"b": 10, "t": 50},  "len": 0.9,
+                            "x": 0.1,
+                            "y": 1,
                           'mode': 'immediate'}],
              'label': f,
              'method': 'animate'} for f in top_10_states['YearQuarter'].unique()
@@ -137,23 +140,44 @@ racing_bar.update_layout(
 
 st.plotly_chart(racing_bar)
 
+# Add state selection in sidebar
+states_list = ["All States"] + sorted(data['State'].unique().tolist())
+selected_state = st.sidebar.selectbox(
+    "Select State",
+    options=states_list,
+    index=0  # Default to "All States"
+)
+
+# Filter data based on state selection
+if selected_state == "All States":
+    filtered_data = data
+else:
+    filtered_data = data[data['State'] == selected_state]
+
+# Add title with selected state
+if selected_state != "All States":
+    st.title(f"{selected_state}")
+
+# Update all plots with filtered data
 col1, col2 = st.columns(2)
+
+
 
 with col1:
     # Define the desired order for severity levels
     severity_order = ['Critical', 'High', 'Medium', 'Low']
 
     # Convert the 'Severity' column to a categorical type with the specified order
-    data['Severity'] = pd.Categorical(data['Severity'], categories=severity_order, ordered=True)
+    filtered_data['Severity'] = pd.Categorical(filtered_data['Severity'], categories=severity_order, ordered=True)
 
     # Ensure 'Start_Time' is in datetime format
-    data['Start_Time'] = pd.to_datetime(data['Start_Time'], errors='coerce')
+    filtered_data['Start_Time'] = pd.to_datetime(filtered_data['Start_Time'], errors='coerce')
 
     # Extract year from 'Start_Time'
-    data['Year'] = data['Start_Time'].dt.year
+    filtered_data['Year'] = filtered_data['Start_Time'].dt.year
 
     # Group by year and severity, and count the number of accidents
-    accidents_per_year_severity = data.groupby(['Year', 'Severity']).size().reset_index(name='Count')
+    accidents_per_year_severity = filtered_data.groupby(['Year', 'Severity']).size().reset_index(name='Count')
 
     # Plotting the data using Plotly
     yr_svrt_fig = px.bar(accidents_per_year_severity, x='Year', y='Count', color='Severity', 
@@ -163,7 +187,7 @@ with col1:
                 barmode='group')
 
     # Group by year to get the total number of accidents per year
-    accidents_per_year = data.groupby('Year').size().reset_index(name='Total_Count')
+    accidents_per_year = filtered_data.groupby('Year').size().reset_index(name='Total_Count')
 
     # Add a line chart on top of the bar chart
     yr_svrt_fig.add_trace(go.Scatter(x=accidents_per_year['Year'], 
@@ -178,8 +202,8 @@ with col1:
     st.plotly_chart(yr_svrt_fig)
 
     # Extract year and month, create datetime series
-    data['YearMonth'] = pd.to_datetime(data['Start_Time'].dt.strftime('%Y-%m'))
-    accidents_per_month = data.groupby('YearMonth').size().reset_index(name='Count')
+    filtered_data['YearMonth'] = pd.to_datetime(filtered_data['Start_Time'].dt.strftime('%Y-%m'))
+    accidents_per_month = filtered_data.groupby('YearMonth').size().reset_index(name='Count')
 
     # Create monthly trend plot
     monthly_trend = px.line(accidents_per_month, 
@@ -205,7 +229,7 @@ with col1:
 
 
 with col2:
-    accidents_per_weekday = data.groupby('Day of Week').size().reset_index(name = 'Total_Count')
+    accidents_per_weekday = filtered_data.groupby('Day of Week').size().reset_index(name = 'Total_Count')
 
     dayofweek = {
         0: 'Monday',
@@ -230,7 +254,7 @@ with col2:
     st.plotly_chart(wkdy_barfig)
 
 
-    accidents_per_hr = data.groupby('Hour').size().reset_index(name = "Total_Count")
+    accidents_per_hr = filtered_data.groupby('Hour').size().reset_index(name = "Total_Count")
 
     hour_barfig = px.bar(accidents_per_hr,
                          x = 'Hour',
@@ -262,7 +286,7 @@ with col2:
                 showarrow=True,
                 arrowhead=2,
                 x=6,  # Arrow end x
-                y=1000,  # Arrow end y
+                y=10,  # Arrow end y
                 axref='x',  # Use x-axis coordinates
                 ayref='y'   # Use y-axis coordinates
             ),
@@ -273,7 +297,7 @@ with col2:
                 showarrow=True,
                 arrowhead=2,
                 x=16,  # Arrow end x
-                y=1000,   # Arrow end y
+                y=10,   # Arrow end y
                 axref='x',  # Use x-axis coordinates
                 ayref='y'   # Use y-axis coordinates
             )
@@ -292,3 +316,4 @@ with col2:
     )
 
     st.plotly_chart(hour_barfig)
+
