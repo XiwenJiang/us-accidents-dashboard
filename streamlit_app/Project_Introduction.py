@@ -121,7 +121,7 @@ def state_code(state_code): return us_states[state_code]
 # Download file from Google Drive
 def download_file_from_google_drive():
     url = "https://drive.google.com/file/d/1ZiYhNqrBPdDPndaOpJcHbXghC8052CK5/view?usp=sharing"
-    output = 'temp/US_Accidents_March23_sampled_500k.csv'
+    output = 'US_Accidents_March23_sampled_500k.csv'
     
     # Convert sharing URL to direct download URL
     file_id = url.split('/')[-2]
