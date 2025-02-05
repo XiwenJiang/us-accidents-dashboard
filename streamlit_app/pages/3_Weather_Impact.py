@@ -50,9 +50,7 @@ def create_kde_plot(data, column):
                 kde = gaussian_kde(severity_data)
                 
                 # Set different x_range for specific columns
-                if column == 'Visibility(mi)':
-                    x_range = np.linspace(0, 20, 200)
-                elif column == 'Precipitation(in)':
+                if column == 'Precipitation(in)':
                     x_range = np.linspace(0, 4, 200)
                 else:
                     x_range = np.linspace(severity_data.min(), severity_data.max(), 200)
@@ -79,9 +77,7 @@ def create_kde_plot(data, column):
             'legend_title_text': 'Severity'
         }
         
-        if column == 'Visibility(mi)':
-            layout_dict['xaxis'] = dict(range=[0, 20])
-        elif column == 'Precipitation(in)':
+        if column == 'Precipitation(in)':
             layout_dict['xaxis'] = dict(range=[0, 4])
         
         fig.update_layout(**layout_dict)
@@ -92,7 +88,15 @@ def create_kde_plot(data, column):
     
     return fig
 
-# Create and display KDE plots for all numerical columns
-for col in numerical_cols:
-    fig = create_kde_plot(weather, col)
-    st.plotly_chart(fig)
+# Create plots for all numerical columns
+col1, col2 = st.columns(2)
+
+for i in range(0, len(numerical_cols), 2):
+    # First column
+    fig1 = create_kde_plot(weather, numerical_cols[i])
+    col1.plotly_chart(fig1, use_container_width=True)
+    
+    # Second column (if available)
+    if i + 1 < len(numerical_cols):
+        fig2 = create_kde_plot(weather, numerical_cols[i + 1])
+        col2.plotly_chart(fig2, use_container_width=True)
