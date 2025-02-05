@@ -88,15 +88,23 @@ def create_kde_plot(data, column):
     
     return fig
 
-# Create plots for all numerical columns
-col1, col2 = st.columns(2)
+# Create 3-column layout
+col1, col2, col3 = st.columns(3)
 
-for i in range(0, len(numerical_cols), 2):
-    # First column
-    fig1 = create_kde_plot(weather, numerical_cols[i])
-    col1.plotly_chart(fig1, use_container_width=True)
-    
-    # Second column (if available)
-    if i + 1 < len(numerical_cols):
-        fig2 = create_kde_plot(weather, numerical_cols[i + 1])
-        col2.plotly_chart(fig2, use_container_width=True)
+# Column 1: Temperature & Humidity
+temp_fig = create_kde_plot(weather, 'Temperature(F)')
+humid_fig = create_kde_plot(weather, 'Humidity(%)')
+col1.plotly_chart(temp_fig, use_container_width=True)
+col1.plotly_chart(humid_fig, use_container_width=True)
+
+# Column 2: Visibility & Precipitation
+vis_fig = create_kde_plot(weather, 'Visibility(mi)')
+precip_fig = create_kde_plot(weather, 'Precipitation(in)')
+col2.plotly_chart(vis_fig, use_container_width=True)
+col2.plotly_chart(precip_fig, use_container_width=True)
+
+# Column 3: Pressure & Wind Speed
+press_fig = create_kde_plot(weather, 'Pressure(in)')
+wind_fig = create_kde_plot(weather, 'Wind_Speed(mph)')
+col3.plotly_chart(press_fig, use_container_width=True)
+col3.plotly_chart(wind_fig, use_container_width=True)
