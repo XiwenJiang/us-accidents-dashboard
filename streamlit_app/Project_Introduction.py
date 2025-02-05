@@ -4,19 +4,29 @@ import streamlit as st
 import plotly.express as px
 import pandas as pd
 
+
 # Initialize session state for data path
 if "data_path" not in st.session_state:
-    st.session_state.data_path = "US_Accidents_March23_sampled_500k.csv"
+    st.session_state.data_path = "/tmp/US_Accidents_March23_sampled_500k.csv"
 
 def download_file_from_google_drive():
     url = "https://drive.google.com/file/d/1ZiYhNqrBPdDPndaOpJcHbXghC8052CK5/view?usp=sharing"
     file_id = url.split('/')[-2]
     direct_url = f'https://drive.google.com/uc?id={file_id}'
+
+    if os.path.exists(st.session_state.data_path):
+        os.remove(st.session_state.data_path)
+
+    try:
+        gdown.download(direct_url, st.session_state.data_path, quiet=False)
+    except Exception as e:
+        st.error(f"Failed to download file: {e}")
+        return None
     
     # Check if file exists
     if not os.path.exists(st.session_state.data_path):
-        gdown.download(direct_url, st.session_state.data_path, quiet=False)
-    
+        st.error(f"File not found after download: {file_path}")
+        return None  
     return st.session_state.data_path
 
 @st.cache_data
