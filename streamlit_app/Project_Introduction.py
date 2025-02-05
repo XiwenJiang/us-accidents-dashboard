@@ -1,40 +1,23 @@
 import os
-import atexit
 import gdown
 import streamlit as st
 import plotly.express as px
 import pandas as pd
 
-# Create temp directory if it doesn't exist
-TEMP_DIR = "temp"
-if not os.path.exists(TEMP_DIR):
-    os.makedirs(TEMP_DIR)
-
 # Initialize session state for data path
 if "data_path" not in st.session_state:
-    st.session_state.data_path = os.path.join(TEMP_DIR, "US_Accidents_March23_sampled_500k.csv")
+    st.session_state.data_path = "US_Accidents_March23_sampled_500k.csv"
 
 def download_file_from_google_drive():
-    try:
-        url = "https://drive.google.com/file/d/1ZiYhNqrBPdDPndaOpJcHbXghC8052CK5/view?usp=sharing"
-        file_id = url.split('/')[-2]
-        direct_url = f'https://drive.google.com/uc?id={file_id}'
-        
-        if not os.path.exists(st.session_state.data_path):
-            gdown.download(direct_url, st.session_state.data_path, quiet=False)
-        
-        return st.session_state.data_path
-    except Exception as e:
-        st.error(f"Error downloading file: {str(e)}")
-        return None
-
-def cleanup():
-    if os.path.exists(st.session_state.data_path):
-        os.remove(st.session_state.data_path)
-    if os.path.exists(TEMP_DIR):
-        os.rmdir(TEMP_DIR)
-
-atexit.register(cleanup)
+    url = "https://drive.google.com/file/d/1ZiYhNqrBPdDPndaOpJcHbXghC8052CK5/view?usp=sharing"
+    file_id = url.split('/')[-2]
+    direct_url = f'https://drive.google.com/uc?id={file_id}'
+    
+    # Check if file exists
+    if not os.path.exists(st.session_state.data_path):
+        gdown.download(direct_url, st.session_state.data_path, quiet=False)
+    
+    return st.session_state.data_path
 
 @st.cache_data
 def load_data():
