@@ -9,13 +9,14 @@ import requests
 
 # Initialize session state for data path
 
-TEMP_DIR = "/tmp/"
-if not os.path.exists(TEMP_DIR):
-    os.makedirs(TEMP_DIR)
+# TEMP_DIR = "/tmp/"
+# if not os.path.exists(TEMP_DIR):
+#     os.makedirs(TEMP_DIR)
 
-if "data_path" not in st.session_state:
-    st.session_state.data_path = os.path.join(TEMP_DIR, "US_Accidents_March23_sampled_500k.csv")
+# if "data_path" not in st.session_state:
+#     st.session_state.data_path = os.path.join(TEMP_DIR, "US_Accidents_March23_sampled_500k.csv")
 
+st.session_state.data_path = "US_Accidents_March23_sampled_500k.csv"
 
 def download_file_from_google_drive():
     url = "https://drive.google.com/file/d/1ZiYhNqrBPdDPndaOpJcHbXghC8052CK5/view?usp=sharing"
