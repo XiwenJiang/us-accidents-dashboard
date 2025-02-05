@@ -326,45 +326,46 @@ top_10_city_bar.update_layout(
 )
 
 
-selected_city = st.sidebar.selectbox(
-    "Select a city to display heatmap:",
-    options=top_10_cities["City"].tolist(),
-    index=1  # Default to the Los Angeles
-)
-
-# Filter the data for the selected city
-filtered_cities = filtered_data[filtered_data["City"] == selected_city]
-filtered_cities = filtered_cities[['ID', 'Severity', 'Start_Lat', 'Start_Lng']]
-
-
-heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in filtered_cities.iterrows()]
-from folium.plugins import HeatMap
-def create_heatmap(df_loc, latitude, longitude, zoom =12, tiles='OpenStreetMap'):
-    """
-    Generate a Folium Map with a heatmap of accident locations.
-    """
-    # Create a list of coordinates from the dataframe columns 'Start_Lat' and 'Start_Lng'
-    heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in df_loc.iterrows()]
-
-    # Create a map centered around the specified coordinates
-    world_map = folium.Map(location=[latitude, longitude], zoom_start=zoom, tiles=tiles)
-
-    # Add the heatmap layer to the map
-    HeatMap(heat_data).add_to(world_map)
-
-    return world_map
-
-map_us_heatmap = create_heatmap(
-    filtered_cities, 
-    us_cities_coords[selected_city]['lat'],
-    us_cities_coords[selected_city]['lon'], 11
-)
-
 
 
 with col2:
     st.markdown(f"#### Top 10 Cities in US with most no. of Road Accident Cases in {selected_years}")
     st.plotly_chart(top_10_city_bar, use_container_width=True)
+    
+    selected_city = st.selectbox(
+        "Select a city to display heatmap:",
+        options=top_10_cities["City"].tolist(),
+        index=1  # Default to the Los Angeles
+    )
+
+    # Filter the data for the selected city
+    filtered_cities = filtered_data[filtered_data["City"] == selected_city]
+    filtered_cities = filtered_cities[['ID', 'Severity', 'Start_Lat', 'Start_Lng']]
+
+
+    heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in filtered_cities.iterrows()]
+    from folium.plugins import HeatMap
+    def create_heatmap(df_loc, latitude, longitude, zoom =12, tiles='OpenStreetMap'):
+        """
+        Generate a Folium Map with a heatmap of accident locations.
+        """
+        # Create a list of coordinates from the dataframe columns 'Start_Lat' and 'Start_Lng'
+        heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in df_loc.iterrows()]
+
+        # Create a map centered around the specified coordinates
+        world_map = folium.Map(location=[latitude, longitude], zoom_start=zoom, tiles=tiles)
+
+        # Add the heatmap layer to the map
+        HeatMap(heat_data).add_to(world_map)
+
+        return world_map
+
+    map_us_heatmap = create_heatmap(
+        filtered_cities, 
+        us_cities_coords[selected_city]['lat'],
+        us_cities_coords[selected_city]['lon'], 11
+    )
+
 
     st.markdown(f"#### Heatmap of Accidents in {selected_city}")
     st_folium(map_us_heatmap, width=800, height=400)
