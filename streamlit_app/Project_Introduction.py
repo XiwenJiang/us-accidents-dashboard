@@ -72,15 +72,20 @@ def download_with_wget():
     st.write(f"File downloaded successfully using wget: {st.session_state.data_path}")
     return st.session_state.data_path
 
+file_url = "https://media.githubusercontent.com/media/XiwenJiang/us-accidents-dashboard/main/US_Accidents_March23_sampled_500k.csv"
+
+
 @st.cache_data
 def load_data():
     # Check if data is already in session state
     if 'data' not in st.session_state:
         # Download and load data
         # file_path = download_file_from_google_drive()
-        file_path = download_with_wget()
-        data = pd.read_csv(file_path)
+        # file_path = download_with_wget()
+        # data = pd.read_csv(file_path)
         
+        data = pd.read_csv(file_url)
+
         # Store in session state
         st.session_state.data = data
     
