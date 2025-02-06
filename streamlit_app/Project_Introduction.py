@@ -57,8 +57,48 @@ def load_data():
     data['State'] = data['State_Code'].apply(state_code)
 
     return data
-
 st.session_state.data = load_data()
+
+
+@st.cache_data
+def state_yearly_data(data):
+    state_yearly_accidents = data.groupby(['State_Code', 'Year']).agg({'ID': 'count'}).reset_index()
+    state_yearly_accidents.columns = ['State_Code', 'Year', 'Accident_Count']
+
+    # Step 4: Aggregate accident counts by severity for each state and year
+    state_yearly_severity_counts = data.groupby(['State_Code', 'Year', 'Severity']).agg({'ID': 'count'}).reset_index()
+    state_yearly_severity_counts.columns = ['State_Code', 'Year', 'Severity', 'Severity_Count']
+
+    # Step 5: Merge the total accident counts and severity counts into one DataFrame
+    state_yearly_data = pd.merge(state_yearly_accidents, state_yearly_severity_counts, on=['State_Code', 'Year'], how='left')
+
+
+    # Map state codes to lat/lon
+    state_yearly_data['Latitude'] = state_yearly_data['State_Code'].map(lambda x: STATE_COORDINATES[x][0])
+    state_yearly_data['Longitude'] = state_yearly_data['State_Code'].map(lambda x: STATE_COORDINATES[x][1])
+
+    # Step 6: Create the tooltip column with all severity counts
+    def get_severity_count(state_code, severity):
+        # Filter the data for the state and severity
+        severity_count = state_yearly_data[(state_yearly_data['State_Code'] == state_code) & 
+                                        (state_yearly_data['Severity'] == severity)]
+        
+        # If the severity count exists, return it; otherwise, return 0
+        if not severity_count.empty:
+            return severity_count['Severity_Count'].values[0]
+        else:
+            return 0  # If no data, return 0
+
+    # Generate the tooltip for each row
+    state_yearly_data['tooltip'] = state_yearly_data.apply(
+        lambda row: f"State: {row['State_Code']}<br>Total Accidents: {row['Accident_Count']}<br>"
+                    f"Low: {get_severity_count(row['State_Code'], 'Low')}<br>"
+                    f"Medium: {get_severity_count(row['State_Code'], 'Medium')}<br>"
+                    f"High: {get_severity_count(row['State_Code'], 'High')}<br>"
+                    f"Critical: {get_severity_count(row['State_Code'], 'Critical')}",
+        axis=1)
+    return state_yearly_data
+state_yearly_data = state_yearly_data(st.session_state.data)
 
 
 
@@ -76,42 +116,6 @@ st.write("""
 
 # seperate page into 2 column, left column is project description, and right column is map
 col2, col1= st.columns([1, 1.2])
-
-state_yearly_accidents = data.groupby(['State_Code', 'Year']).agg({'ID': 'count'}).reset_index()
-state_yearly_accidents.columns = ['State_Code', 'Year', 'Accident_Count']
-
-# Step 4: Aggregate accident counts by severity for each state and year
-state_yearly_severity_counts = data.groupby(['State_Code', 'Year', 'Severity']).agg({'ID': 'count'}).reset_index()
-state_yearly_severity_counts.columns = ['State_Code', 'Year', 'Severity', 'Severity_Count']
-
-# Step 5: Merge the total accident counts and severity counts into one DataFrame
-state_yearly_data = pd.merge(state_yearly_accidents, state_yearly_severity_counts, on=['State_Code', 'Year'], how='left')
-
-
-# Map state codes to lat/lon
-state_yearly_data['Latitude'] = state_yearly_data['State_Code'].map(lambda x: STATE_COORDINATES[x][0])
-state_yearly_data['Longitude'] = state_yearly_data['State_Code'].map(lambda x: STATE_COORDINATES[x][1])
-
-# Step 6: Create the tooltip column with all severity counts
-def get_severity_count(state_code, severity):
-    # Filter the data for the state and severity
-    severity_count = state_yearly_data[(state_yearly_data['State_Code'] == state_code) & 
-                                    (state_yearly_data['Severity'] == severity)]
-    
-    # If the severity count exists, return it; otherwise, return 0
-    if not severity_count.empty:
-        return severity_count['Severity_Count'].values[0]
-    else:
-        return 0  # If no data, return 0
-
-# Generate the tooltip for each row
-state_yearly_data['tooltip'] = state_yearly_data.apply(
-    lambda row: f"State: {row['State_Code']}<br>Total Accidents: {row['Accident_Count']}<br>"
-                f"Low: {get_severity_count(row['State_Code'], 'Low')}<br>"
-                f"Medium: {get_severity_count(row['State_Code'], 'Medium')}<br>"
-                f"High: {get_severity_count(row['State_Code'], 'High')}<br>"
-                f"Critical: {get_severity_count(row['State_Code'], 'Critical')}",
-    axis=1)
 
 
 
