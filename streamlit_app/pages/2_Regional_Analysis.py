@@ -229,7 +229,8 @@ with col1:
     st.markdown(f"#### Top 10 State With Severity in {selected_years}")
 
     st.plotly_chart(top10_bar, use_container_width=True)
-    st.markdown(f"#### Top 10 Cities in US with most no. of Road Accident Cases in {selected_years}")
+    
+    st.markdown(f"#### Accident Location by State in {selected_years}")
 
     st_folium(m, width=725,height=400, returned_objects=[])
 
