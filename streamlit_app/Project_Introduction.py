@@ -142,7 +142,7 @@ fig.update_layout(
         title="Accident Count",  # Title for the color scale
     ),
     mapbox_style="carto-positron",  # Map style
-    mapbox_zoom=3,
+    mapbox_zoom=2,
     mapbox_center={"lat": 37.0902, "lon": -95.7129},  # Centered on the USA
     margin={"r": 0, "t": 50, "l": 0, "b": 0},  # Remove extra margins
     height=600,  # Increase the height
