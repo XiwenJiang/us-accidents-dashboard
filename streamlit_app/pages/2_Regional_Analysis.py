@@ -309,8 +309,8 @@ top_10_city_bar.update_traces(
     textfont=dict(
         size=12,  # Font size
         color="white",  # White text
-        family="Arial",  # Font family
-        weight="bold"  # Bold text
+        family="Arial"  # Font family
+        # Removed the weight property as it's not supported
     ),   
     hovertemplate="City: %{x}<br>Accident Count: %{y}<br>Percentage: %{text}<extra></extra>"
 )
