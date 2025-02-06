@@ -1,97 +1,16 @@
 import os
-import gdown
 import streamlit as st
 import plotly.express as px
 import pandas as pd
-import time
 import requests
+from constants import US_STATES, STATE_COORDINATES
 
-
-# Initialize session state for data path
-
-# TEMP_DIR = "/tmp/"
-# if not os.path.exists(TEMP_DIR):
-#     os.makedirs(TEMP_DIR)
-
-# if "data_path" not in st.session_state:
-#     st.session_state.data_path = os.path.join(TEMP_DIR, "US_Accidents_March23_sampled_500k.csv")
-
-st.session_state.data_path = "US_Accidents_March23_sampled_500k.csv"
-
-# def download_file_from_google_drive():
-#     url = "https://drive.google.com/file/d/1ZiYhNqrBPdDPndaOpJcHbXghC8052CK5/view?usp=sharing"
-#     file_id = url.split('/')[-2]
-#     direct_url = f'https://drive.google.com/uc?id={file_id}'
-
-#     if os.path.exists(st.session_state.data_path):
-#         os.remove(st.session_state.data_path)
-
-#     try:
-#         gdown.download(direct_url, st.session_state.data_path, quiet=False, fuzzy= True)
-#         time.sleep(5)
-#     except Exception as e:
-#         st.error(f"Failed to download file: {e}")
-#         return None
-    
-#     # Check if file exists
-#     if not os.path.exists(st.session_state.data_path):
-#         st.error(f"File not found after download: {st.session_state.data_path}")
-#         return None  
-#     return st.session_state.data_path
-
-# def download_file():
-#     url = "https://drive.google.com/uc?export=download&id=1ZiYhNqrBPdDPndaOpJcHbXghC8052CK5"
-    
-#     response = requests.get(url, stream=True)
-#     if response.status_code == 200:
-#         with open(st.session_state.data_path, 'wb') as file:
-#             for chunk in response.iter_content(chunk_size=1024):
-#                 file.write(chunk)
-#     else:
-#         st.error("Failed to download the file, please check Google Drive permissions.")
-    
-#     return st.session_state.data_path if os.path.exists(st.session_state.data_path) else None
-
-
-
-# def download_with_wget():
-#     url = "https://drive.google.com/uc?id=1ZiYhNqrBPdDPndaOpJcHbXghC8052CK5&export=download"
-
-#     if os.path.exists(st.session_state.data_path):
-#         os.remove(st.session_state.data_path)
-
-#     st.write(f"Downloading file using wget: {st.session_state.data_path}")
-
-#     # ✅ 使用 `wget` 代替 `gdown`
-#     os.system(f"wget --no-check-certificate '{url}' -O {st.session_state.data_path}")
-
-#     if not os.path.exists(st.session_state.data_path):
-#         st.error(f"File not found after wget download: {st.session_state.data_path}")
-#         return None
-
-#     st.write(f"File downloaded successfully using wget: {st.session_state.data_path}")
-#     return st.session_state.data_path
 
 file_url = "https://media.githubusercontent.com/media/XiwenJiang/us-accidents-dashboard/main/US_Accidents_March23_sampled_500k.csv"
 
 
 st.set_page_config(layout="wide")
 
-# @st.cache_data
-# def load_data():
-#     # Check if data is already in session state
-#     if 'data' not in st.session_state:
-#         # Download and load data
-#         # file_path = download_file_from_google_drive()
-#         # file_path = download_with_wget()
-#         # data = pd.read_csv(file_path)
-        
-#         data = pd.read_csv(file_url)
-
-#         # Store in session state
-#         st.session_state.data = data
-    
-#     return st.session_state.data
 
 us_states = {'AK': 'Alaska',
  'AL': 'Alabama',
@@ -205,7 +124,8 @@ state_coordinates = {
 }
 
 
-def state_code(state_code): return us_states[state_code]
+def state_code(state_code): 
+    return US_STATES[state_code]
 
 # Load dataset
 @st.cache_data
@@ -278,8 +198,8 @@ state_yearly_data = pd.merge(state_yearly_accidents, state_yearly_severity_count
 
 
 # Map state codes to lat/lon
-state_yearly_data['Latitude'] = state_yearly_data['State_Code'].map(lambda x: state_coordinates[x][0])
-state_yearly_data['Longitude'] = state_yearly_data['State_Code'].map(lambda x: state_coordinates[x][1])
+state_yearly_data['Latitude'] = state_yearly_data['State_Code'].map(lambda x: STATE_COORDINATES[x][0])
+state_yearly_data['Longitude'] = state_yearly_data['State_Code'].map(lambda x: STATE_COORDINATES[x][1])
 
 # Step 6: Create the tooltip column with all severity counts
 def get_severity_count(state_code, severity):

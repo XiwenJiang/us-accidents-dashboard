@@ -6,60 +6,7 @@ import requests
 from folium.features import GeoJsonTooltip
 
 from streamlit_folium import st_folium
-
-us_cities_coords = {
-    "Miami": {"lat": 25.7617, "lon": -80.1918},
-    "Houston": {"lat": 29.7604, "lon": -95.3698},
-    "Los Angeles": {"lat": 34.0522, "lon": -118.2437},
-    "Charlotte": {"lat": 35.2271, "lon": -80.8431},
-    "Dallas": {"lat": 32.7767, "lon": -96.7970},
-    "Orlando": {"lat": 28.5383, "lon": -81.3792},
-    "Austin": {"lat": 30.2672, "lon": -97.7431},
-    "Raleigh": {"lat": 35.7796, "lon": -78.6382},
-    "Nashville": {"lat": 36.1627, "lon": -86.7816},
-    "Baton Rouge": {"lat": 30.4515, "lon": -91.1871},
-    "Atlanta": {"lat": 33.7490, "lon": -84.3880},
-    "Sacramento": {"lat": 38.5816, "lon": -121.4944},
-    "San Diego": {"lat": 32.7157, "lon": -117.1611},
-    "Phoenix": {"lat": 33.4484, "lon": -112.0740},
-    "Minneapolis": {"lat": 44.9778, "lon": -93.2650},
-    "Richmond": {"lat": 37.5407, "lon": -77.4360},
-    "Oklahoma City": {"lat": 35.4676, "lon": -97.5164},
-    "Jacksonville": {"lat": 30.3322, "lon": -81.6557},
-    "Tucson": {"lat": 32.2226, "lon": -110.9747},
-    "Columbia": {"lat": 34.0007, "lon": -81.0348},
-    "Greenville": {"lat": 34.8526, "lon": -82.3940},
-    "San Antonio": {"lat": 29.4241, "lon": -98.4936},
-    "Saint Paul": {"lat": 44.9537, "lon": -93.0900},
-    "Seattle": {"lat": 47.6062, "lon": -122.3321},
-    "Portland": {"lat": 45.5051, "lon": -122.6750},
-    "San Jose": {"lat": 37.3382, "lon": -121.8863},
-    "Indianapolis": {"lat": 39.7684, "lon": -86.1581},
-    "Denver": {"lat": 39.7392, "lon": -104.9903},
-    "Chicago": {"lat": 41.8781, "lon": -87.6298},
-    "Tampa": {"lat": 27.9506, "lon": -82.4572},
-    "Kansas City": {"lat": 39.0997, "lon": -94.5786},
-    "Tulsa": {"lat": 36.1540, "lon": -95.9928},
-    "Bronx": {"lat": 40.8448, "lon": -73.8648},
-    "New Orleans": {"lat": 29.9511, "lon": -90.0715},
-    "Rochester": {"lat": 43.1566, "lon": -77.6088},
-    "Riverside": {"lat": 33.9806, "lon": -117.3755},
-    "Fort Lauderdale": {"lat": 26.1224, "lon": -80.1373},
-    "Detroit": {"lat": 42.3314, "lon": -83.0458},
-    "Grand Rapids": {"lat": 42.9634, "lon": -85.6681},
-    "Dayton": {"lat": 39.7589, "lon": -84.1916},
-    "Oakland": {"lat": 37.8044, "lon": -122.2712},
-    "Columbus": {"lat": 39.9612, "lon": -82.9988},
-    "Bakersfield": {"lat": 35.3733, "lon": -119.0187},
-    "New York": {"lat": 40.7128, "lon": -74.0060},
-    "Brooklyn": {"lat": 40.6782, "lon": -73.9442},
-    "San Bernardino": {"lat": 34.1083, "lon": -117.2898},
-    "Omaha": {"lat": 41.2565, "lon": -95.9345},
-    "Corona": {"lat": 33.8753, "lon": -117.5664},
-    "Anaheim": {"lat": 33.8366, "lon": -117.9143},
-    "Long Beach": {"lat": 33.7701, "lon": -118.1937}
-}
-
+from constants import US_CITIES_COORDS
 
 st.title("Location Analysis")
 # st.write("""
@@ -362,8 +309,8 @@ with col2:
 
     map_us_heatmap = create_heatmap(
         filtered_cities, 
-        us_cities_coords[selected_city]['lat'],
-        us_cities_coords[selected_city]['lon'], 11
+        US_CITIES_COORDS[selected_city]['lat'],
+        US_CITIES_COORDS[selected_city]['lon'], 11
     )
 
 
