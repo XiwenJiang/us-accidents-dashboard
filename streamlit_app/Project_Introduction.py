@@ -9,7 +9,10 @@ from constants import US_STATES, STATE_COORDINATES
 file_url = "https://media.githubusercontent.com/media/XiwenJiang/us-accidents-dashboard/main/US_Accidents_March23_sampled_500k.csv"
 
 
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide",
+                   page_title="US Accidents Dashboard",
+                   page_icon=":car:",
+                   initial_sidebar_state="auto")
 
 
 def state_code(state_code): 
