@@ -7,6 +7,7 @@ from streamlit_folium import st_folium
 from constants import US_CITIES_COORDS
 import plotly.express as px
 import plotly.graph_objects as go
+from data_processing import get_severity_data
 
 box_template = """
 <div style="background:{}; padding:15px; border-radius:10px; text-align:center; color:white; font-size:18px;">
@@ -20,20 +21,7 @@ colors = ["#FF5733", "#FF8C00", "#FFD700", "#28A745"]  # 红，橙，黄，绿
 
 
 data = st.session_state.data
-
-def severity_data(data):
-    """Get severity data"""
-    severity_counts = data['Severity'].value_counts().sort_index()
-    severity_percentages = data['Severity'].value_counts(normalize=True).sort_index() * 100
-
-    # Create a DataFrame for displaying
-    severity_df = pd.DataFrame({
-        'Severity Level': severity_counts.index,
-        'Count': severity_counts.values,
-        'Percentage': severity_percentages.values
-    })
-    return severity_df
-severity_df = severity_data(data)
+severity_df = get_severity_data(data)
 
 severity_df
 

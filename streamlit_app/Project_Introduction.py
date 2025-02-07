@@ -1,65 +1,24 @@
-
 import os
 import streamlit as st
 import plotly.express as px
 import pandas as pd
 import requests
 from constants import US_STATES, STATE_COORDINATES
-
+from data_processing import load_data
 
 file_url = "https://media.githubusercontent.com/media/XiwenJiang/us-accidents-dashboard/main/US_Accidents_March23_sampled_500k.csv"
-
 
 st.set_page_config(layout="wide",
                    page_title="US Accidents Dashboard",
                    page_icon=":car:",
                    initial_sidebar_state="auto")
 
-
-def state_code(state_code): 
-    return US_STATES[state_code]
-
 # Load dataset
 @st.cache_data
-def load_data():
-    # Download file if not exists
-    # file_path = download_file_from_google_drive()
-    
-    # Load and process data
-    data = pd.read_csv(file_url)
+def load_cached_data():
+    return load_data(file_url)
 
-    # Select columns for analysis
-    basic_columns = ['ID', 'Severity', 
-                    'Start_Time', 'End_Time', 
-                    'Start_Lat', 'Start_Lng', 
-                    'Distance(mi)', 'Sunrise_Sunset']
-    geo_columns = ['Street','City', 'County', 'State', 'Zipcode', 'Country', 'Timezone']
-    road_conditions = ['Bump', 'Crossing', 'Give_Way', 'Junction', 'Stop', 'No_Exit', 'Traffic_Signal', 'Turning_Loop']
-    weather_columns = ['Temperature(F)', 'Humidity(%)', 'Pressure(in)', 'Visibility(mi)', 'Wind_Direction', 'Wind_Speed(mph)', 'Precipitation(in)', 'Weather_Condition']
-    description_columns = ['Description']
-    all_columns = basic_columns + geo_columns + road_conditions + weather_columns + description_columns
-    data = data[all_columns]
-
-    # Preprocess data
-    # Intergrate datetime columns
-    data['Start_Time'] = pd.to_datetime(data['Start_Time'].str.replace(r'\.\d+$', '', regex=True), errors='coerce')
-    data['End_Time'] = pd.to_datetime(data['End_Time'].str.replace(r'\.\d+$', '', regex=True), errors='coerce')
-    data['Year'] = data['Start_Time'].dt.year
-    data['Month'] = data['Start_Time'].dt.month
-    data['Day of Week'] = data['Start_Time'].dt.dayofweek
-    data['Hour'] = data['Start_Time'].dt.hour
-
-    # Severity Levels
-    severity_level = {1: 'Low', 2: 'Medium', 3: 'High', 4: 'Critical'}
-    data['Severity'] = data['Severity'].map(severity_level)
-
-    # State Code
-    data['State_Code'] = data['State']
-    data['State'] = data['State_Code'].apply(state_code)
-
-    return data
-st.session_state.data = load_data()
-
+st.session_state.data = load_cached_data()
 
 @st.cache_data
 def state_yearly_data(data):

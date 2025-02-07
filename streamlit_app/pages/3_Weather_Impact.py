@@ -4,17 +4,14 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 from scipy.stats import gaussian_kde
+from data_processing import get_weather_data
 
 st.title("Weather Impact Analysis")
 st.write("Analysis of how weather conditions affect accident frequency and severity.")
 
 # Get data from session state
 data = st.session_state.data
-weather_columns = ['Temperature(F)', 'Humidity(%)', 'Pressure(in)', 'Visibility(mi)', 'Wind_Direction', 'Wind_Speed(mph)', 'Precipitation(in)', 'Weather_Condition']
-road_conditions = ['Bump', 'Crossing', 'Give_Way', 'Junction', 'Stop', 'No_Exit', 'Traffic_Signal']
-weather = data[weather_columns + road_conditions]
-weather['Severity'] = data['Severity']
-
+weather = get_weather_data(data)
 
 # Get top 10 weather conditions and their totals
 weather_counts = (weather.groupby('Weather_Condition')
