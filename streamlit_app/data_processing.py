@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
-from constants import US_STATES
+from constants import US_STATES, ALL_STATES, STATE_COORDINATES
+
 
 @st.cache_data
 def process_yearly_data(data):
@@ -28,6 +29,168 @@ def get_filtered_data(data, selected_years):
     if '2016-2023' not in selected_years:
         return data[data['Year'].isin(selected_years)]
     return data
+
+@st.cache_data
+def get_state_severity_data(filtered_data):
+    """Process state severity data"""
+    # Aggregate accident counts by State and Severity
+    state_severity_counts = filtered_data.groupby(['State', 'Severity']).agg({'ID': 'count'}).reset_index()
+    state_severity_counts.columns = ['State', 'Severity', 'Accident_Count']
+
+    # Compute total counts for each state
+    state_total_counts = filtered_data.groupby('State').agg({'ID': 'count'}).reset_index()
+    state_total_counts.columns = ['State', 'Total_Accidents']
+
+    # Merge and calculate percentages
+    state_severity_counts = state_severity_counts.merge(state_total_counts, on='State')
+    all_accidents = state_severity_counts['Total_Accidents'].drop_duplicates().sum()
+    state_severity_counts['Percentage'] = (state_severity_counts['Total_Accidents'] / all_accidents) * 100
+
+    # Add rank
+    state_total_counts['Rank'] = state_total_counts['Total_Accidents'].rank(ascending=False).astype(int)
+    state_severity_counts = state_severity_counts.merge(
+        state_total_counts[['State', 'Rank']], 
+        on='State'
+    ).sort_values('Rank', ascending=True)
+
+    return state_severity_counts
+
+@st.cache_data
+def get_temporal_data(filtered_data):
+    """Process temporal analysis data"""
+    # Get accidents by year and severity
+    accidents_per_year_severity = filtered_data.groupby(['Year', 'Severity']).size().reset_index(name='Count')
+    
+    # Get total accidents per year
+    accidents_per_year = filtered_data.groupby('Year').size().reset_index(name='Total_Count')
+    
+    # Get accidents by month
+    filtered_data['YearMonth'] = pd.to_datetime(filtered_data['Start_Time'].dt.strftime('%Y-%m'))
+    accidents_per_month = filtered_data.groupby('YearMonth').size().reset_index(name='Count')
+    
+    # Get accidents by weekday
+    accidents_per_weekday = filtered_data.groupby('Day of Week').size().reset_index(name='Total_Count')
+    
+    # Get accidents by hour
+    accidents_per_hour = filtered_data.groupby('Hour').size().reset_index(name='Total_Count')
+    
+    return {
+        'yearly_severity': accidents_per_year_severity,
+        'yearly_total': accidents_per_year,
+        'monthly': accidents_per_month,
+        'weekday': accidents_per_weekday,
+        'hourly': accidents_per_hour
+    }
+
+@st.cache_data
+def get_top_10_states_by_quarter(data):
+    """Get top 10 states for each quarter"""
+    state_time_counts = data.groupby(['State', 'Year', 'Quarter', 'YearQuarter'])['ID'].count().reset_index(name='Count')
+    
+    top_10_states = (state_time_counts.groupby('YearQuarter')
+                    .apply(lambda x: x.nlargest(10, 'Count')
+                          .sort_values('Count', ascending=True))
+                    .reset_index(drop=True))
+    
+    severity_counts = (data.groupby(['State', 'YearQuarter', 'Severity'])
+                      .size()
+                      .reset_index(name='Severity_Count'))
+    
+    return top_10_states, severity_counts
+
+@st.cache_data
+def get_racing_bar_tooltip(state, yearquarter, severity_counts):
+    """Generate tooltip for racing bar chart"""
+    state_data = severity_counts[(severity_counts['State'] == state) & 
+                               (severity_counts['YearQuarter'] == yearquarter)]
+    tooltip = f"State: {state}<br>"
+    tooltip += f"Time: {yearquarter}<br>"
+    total = state_data['Severity_Count'].sum()
+    tooltip += f"Total Accidents: {total}<br>"
+    
+    for _, row in state_data.iterrows():
+        pct = (row['Severity_Count'] / total * 100)
+        tooltip += f"{row['Severity']}: {row['Severity_Count']} ({pct:.1f}%)<br>"
+    
+    return tooltip
+
+@st.cache_data
+def get_state_analysis_data(filtered_data):
+    """Process state-level analysis data"""
+    # Aggregate accident counts by State and Severity
+    state_severity_counts = filtered_data.groupby(['State', 'Severity']).agg({'ID': 'count'}).reset_index()
+    state_severity_counts.columns = ['State', 'Severity', 'Accident_Count']
+
+    # Compute total counts and percentages
+    state_total_counts = filtered_data.groupby('State').agg({'ID': 'count'}).reset_index()
+    state_total_counts.columns = ['State', 'Total_Accidents']
+    
+    # Merge and calculate statistics
+    state_severity_counts = state_severity_counts.merge(state_total_counts, on='State')
+    all_accident_in_range = state_severity_counts['Total_Accidents'].drop_duplicates().sum()
+    state_severity_counts['Percentage'] = (state_severity_counts['Total_Accidents'] / all_accident_in_range) * 100
+    
+    # Add rank
+    state_total_counts['Rank'] = state_total_counts['Total_Accidents'].rank(ascending=False).astype(int)
+    state_severity_counts = state_severity_counts.merge(
+        state_total_counts[['State', 'Rank']], 
+        on='State'
+    ).sort_values('Rank', ascending=True)
+    
+    return state_severity_counts.head(40)
+
+@st.cache_data  # 修复了 @st.cache_datdef 的拼写错误
+def get_state_yearly_data(filtered_data):
+    """Process state yearly data with severity counts"""
+    # Get basic accident counts
+    state_yearly_accidents = filtered_data.groupby(['State']).agg({'ID': 'count'}).reset_index()
+    state_yearly_accidents.columns = ['State', 'Accident_Count']
+    
+    # Get severity counts
+    state_yearly_severity = filtered_data.groupby(['State', 'Severity']).agg({'ID': 'count'}).reset_index()
+    state_yearly_severity.columns = ['State', 'Severity', 'Severity_Count']
+    
+    # Merge data
+    state_yearly_data = pd.merge(state_yearly_accidents, state_yearly_severity, on=['State'], how='left')
+    all_states_df = pd.DataFrame({"State": ALL_STATES})
+    state_yearly_data = pd.merge(all_states_df, state_yearly_data, on="State", how="left")
+    
+    # Generate tooltip
+    def get_state_tooltip(group):
+        tooltip = f"Total Accidents: {group['Accident_Count'].iloc[0]}<br>"
+        for severity in ['Low', 'Medium', 'High', 'Critical']:
+            count = group[group['Severity'] == severity]['Severity_Count'].sum()
+            tooltip += f"{severity}: {count}<br>"
+        return tooltip
+    
+    # Add tooltip column
+    state_yearly_data['tooltip'] = state_yearly_data.groupby('State').apply(get_state_tooltip)
+    
+    return state_yearly_data
+
+@st.cache_data
+def create_geojson_data(state_yearly_data, geojson_data):
+    """Process and merge data with GeoJSON"""
+    for feature in geojson_data["features"]:
+        state_name = feature["properties"]["name"]
+        match = state_yearly_data[state_yearly_data["State"] == state_name]
+        if not match.empty:
+            feature["properties"]["Accident_Count"] = int(match["Accident_Count"].iloc[0])
+            feature["properties"]["tooltip"] = match["tooltip"].values[0]
+        else:
+            feature["properties"]["Accident_Count"] = 0
+            feature["properties"]["tooltip"] = "No data available"
+    return geojson_data
+
+def get_tooltip(row):
+    """Generate tooltip for state data"""
+    return (
+        f"Rank: {row['Rank']}<br>"
+        f"State: {row['State']}<br>"
+        f"Total Accidents: {row['Total_Accidents']} ({row['Percentage']:.2f}%)<br>"
+        f"Severity: {row['Severity']}<br>"
+        f"Severity Count: {row['Accident_Count']} <br>"
+    )
 
 import pandas as pd
 import numpy as np
