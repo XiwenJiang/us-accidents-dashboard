@@ -147,24 +147,31 @@ def get_state_yearly_data(filtered_data):
     state_yearly_accidents.columns = ['State', 'Accident_Count']
     
     # Get severity counts
-    state_yearly_severity = filtered_data.groupby(['State', 'Severity']).agg({'ID': 'count'}).reset_index()
-    state_yearly_severity.columns = ['State', 'Severity', 'Severity_Count']
+    severity_counts = filtered_data.groupby(['State', 'Severity']).agg({'ID': 'count'}).reset_index()
+    severity_counts.columns = ['State', 'Severity', 'Severity_Count']
     
-    # Merge data
-    state_yearly_data = pd.merge(state_yearly_accidents, state_yearly_severity, on=['State'], how='left')
+    # Merge data with all states
     all_states_df = pd.DataFrame({"State": ALL_STATES})
-    state_yearly_data = pd.merge(all_states_df, state_yearly_data, on="State", how="left")
+    state_yearly_data = pd.merge(all_states_df, state_yearly_accidents, on="State", how="left")
     
-    # Generate tooltip
-    def get_state_tooltip(group):
-        tooltip = f"Total Accidents: {group['Accident_Count'].iloc[0]}<br>"
+    # Fill NaN values
+    state_yearly_data['Accident_Count'] = state_yearly_data['Accident_Count'].fillna(0).astype(int)
+    
+    # Create tooltips
+    tooltips = []
+    for state in state_yearly_data['State']:
+        state_severity = severity_counts[severity_counts['State'] == state]
+        total = state_yearly_data[state_yearly_data['State'] == state]['Accident_Count'].iloc[0]
+        
+        tooltip = f"Total Accidents: {int(total)}<br>"
         for severity in ['Low', 'Medium', 'High', 'Critical']:
-            count = group[group['Severity'] == severity]['Severity_Count'].sum()
+            count = state_severity[state_severity['Severity'] == severity]['Severity_Count'].sum()
+            count = 0 if pd.isna(count) else int(count)
             tooltip += f"{severity}: {count}<br>"
-        return tooltip
+        tooltips.append(tooltip)
     
-    # Add tooltip column
-    state_yearly_data['tooltip'] = state_yearly_data.groupby('State').apply(get_state_tooltip)
+    # Add tooltips to dataframe
+    state_yearly_data['tooltip'] = tooltips
     
     return state_yearly_data
 
