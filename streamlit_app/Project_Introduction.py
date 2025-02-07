@@ -82,7 +82,7 @@ col2, col1= st.columns([1, 1.2])
 # Create the scatter_mapbox figure
 fig = px.scatter_mapbox(
     state_yearly_data,
-    lat="Latitude",
+    lat=" ",
     lon="Longitude",
     color="Accident_Count",
     size="Accident_Count",

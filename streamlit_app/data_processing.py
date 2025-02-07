@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 from constants import US_STATES, ALL_STATES, STATE_COORDINATES
+import numpy as np
 
 
 @st.cache_data
@@ -199,10 +200,6 @@ def get_tooltip(row):
         f"Severity Count: {row['Accident_Count']} <br>"
     )
 
-import pandas as pd
-import numpy as np
-from constants import US_STATES
-
 def state_code(state_code): 
     return US_STATES[state_code]
 
@@ -266,3 +263,42 @@ def get_severity_data(data):
         'Percentage': severity_percentages.values
     })
     return severity_df
+
+@st.cache_data
+def get_county_data(data):
+    """Process county-level accident data"""
+    # Group by county and get counts
+    county_data = data.groupby(['County', 'State', 'Severity']).size().reset_index(name='Count')
+    
+    # Get total accidents per county
+    county_totals = county_data.groupby(['County', 'State', ])['Count'].sum().reset_index()
+    
+    # Calculate severity percentages
+    severity_pcts = pd.pivot_table(
+        county_data, 
+        values='Count',
+        index=['County', 'State'],
+        columns='Severity',
+        aggfunc='sum',
+        fill_value=0
+    ).reset_index()
+    
+    # Merge total counts with severity percentages
+    county_stats = pd.merge(
+        county_totals,
+        severity_pcts,
+        on=['County', 'State']
+    )
+    
+    # Create tooltip
+    county_stats['tooltip'] = county_stats.apply(
+        lambda x: (f"County: {x['County']}, {x['State']}<br>"
+                  f"Total Accidents: {int(x['Count'])}<br>"
+                  f"Critical: {int(x['Critical'])}<br>"
+                  f"High: {int(x['High'])}<br>"
+                  f"Medium: {int(x['Medium'])}<br>"
+                  f"Low: {int(x['Low'])}"),
+        axis=1
+    )
+    
+    return county_stats

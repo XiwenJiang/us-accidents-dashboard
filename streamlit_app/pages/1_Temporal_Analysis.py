@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from data_processing import get_temporal_data, get_top_10_states_by_quarter, get_racing_bar_tooltip
 
 st.title("Temporal Analysis")
 st.write("Analyze accident trends over time.")
@@ -17,7 +18,7 @@ data['YearQuarter'] = data['Year'].astype(str) + '-Q' + data['Quarter'].astype(s
 state_time_counts = data.groupby(['State', 'Year', 'Quarter', 'YearQuarter'])['ID'].count().reset_index(name='Count')
 
 # Get top 10 states for each time period and sort them
-top_10_states = (state_time_counts.groupby('YearQuarter')
+top_10_states_by_yr_ = (state_time_counts.groupby('YearQuarter')
                  .apply(lambda x: x.nlargest(10, 'Count')
                        .sort_values('Count', ascending=True))
                  .reset_index(drop=True))
@@ -31,7 +32,7 @@ severity_counts = (data.groupby(['State', 'YearQuarter', 'Severity'])
 racing_bar = go.Figure()
 
 # Add initial data
-initial_data = top_10_states[top_10_states['YearQuarter'] == top_10_states['YearQuarter'].iloc[0]]
+initial_data = top_10_states_by_yr_[top_10_states_by_yr_['YearQuarter'] == top_10_states_by_yr_['YearQuarter'].iloc[0]]
 racing_bar.add_trace(
     go.Bar(
         x=initial_data['Count'],
@@ -58,8 +59,8 @@ def get_racing_tooltip(state, yearquarter):
 
 # Create and add frames
 frames = []
-for yearquarter in top_10_states['YearQuarter'].unique():
-    frame_data = top_10_states[top_10_states['YearQuarter'] == yearquarter].sort_values('Count', ascending=True)
+for yearquarter in top_10_states_by_yr_['YearQuarter'].unique():
+    frame_data = top_10_states_by_yr_[top_10_states_by_yr_['YearQuarter'] == yearquarter].sort_values('Count', ascending=True)
     
     # Create tooltips for each state in frame
     tooltips = [get_racing_tooltip(state, yearquarter) for state in frame_data['State']]
@@ -91,7 +92,7 @@ for yearquarter in top_10_states['YearQuarter'].unique():
 racing_bar.frames = frames
 
 # Get max count for x-axis range
-max_count = top_10_states['Count'].max()
+max_count = top_10_states_by_yr_['Count'].max()
 
 # Update layout with x-axis range
 racing_bar.update_layout(
@@ -133,7 +134,7 @@ racing_bar.update_layout(
                             "y": 1,
                           'mode': 'immediate'}],
              'label': f,
-             'method': 'animate'} for f in top_10_states['YearQuarter'].unique()
+             'method': 'animate'} for f in top_10_states_by_yr_['YearQuarter'].unique()
         ]
     }]
 )

@@ -7,7 +7,7 @@ from streamlit_folium import st_folium
 from constants import US_CITIES_COORDS
 import plotly.express as px
 import plotly.graph_objects as go
-from data_processing import get_severity_data
+from data_processing import get_severity_data, get_county_data
 
 box_template = """
 <div style="background:{}; padding:15px; border-radius:10px; text-align:center; color:white; font-size:18px;">
@@ -42,4 +42,13 @@ with col2:
     with col2_4:
         st.markdown(box_template.format(colors[3], "Low", severity_df['Count'][2], f"{severity_df['Percentage'][2]:.2f}%"), unsafe_allow_html=True)
 
-# Plot the severity data on us map
+
+# Add county-level analysis
+st.markdown("#### Accident Distribution by County")
+
+county_data = get_county_data(data)
+county_data 
+
+#save county data to local file
+
+county_data.to_csv('county_data.csv', index=False)
