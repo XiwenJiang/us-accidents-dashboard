@@ -2,6 +2,8 @@ import pandas as pd
 import streamlit as st
 from constants import US_STATES, ALL_STATES, STATE_COORDINATES
 import numpy as np
+import folium
+from folium.plugins import HeatMap
 
 
 @st.cache_data
@@ -203,6 +205,7 @@ def get_tooltip(row):
 def state_code(state_code): 
     return US_STATES[state_code]
 
+@st.cache_data
 def load_data(file_url):
     # Load and process data
     data = pd.read_csv(file_url)
@@ -300,5 +303,10 @@ def get_county_data(data):
                   f"Low: {int(x['Low'])}"),
         axis=1
     )
-    
     return county_stats
+
+def create_heatmap(df_loc, latitude, longitude, zoom =12, tiles='OpenStreetMap'):
+        heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in df_loc.iterrows()]
+        world_map = folium.Map(location=[latitude, longitude], zoom_start=zoom, tiles=tiles)
+        HeatMap(heat_data).add_to(world_map)
+        return world_map

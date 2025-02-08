@@ -5,7 +5,9 @@ import folium
 import requests
 from folium.features import GeoJsonTooltip
 
+
 from streamlit_folium import st_folium
+from folium.plugins import HeatMap
 from constants import US_CITIES_COORDS, US_STATES, STATE_COORDINATES, ALL_STATES  # 添加 ALL_STATES
 from data_processing import (
     get_state_analysis_data,
@@ -205,7 +207,6 @@ with col2:
 
 
     heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in filtered_cities.iterrows()]
-    from folium.plugins import HeatMap
     def create_heatmap(df_loc, latitude, longitude, zoom =12, tiles='OpenStreetMap'):
         """
         Generate a Folium Map with a heatmap of accident locations.

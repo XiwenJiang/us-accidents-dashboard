@@ -7,7 +7,10 @@ from streamlit_folium import st_folium
 from constants import US_CITIES_COORDS
 import plotly.express as px
 import plotly.graph_objects as go
-from data_processing import get_severity_data, get_county_data
+from data_processing import (get_severity_data, 
+                             get_state_analysis_data, 
+                             get_tooltip,
+                             create_heatmap)
 
 box_template = """
 <div style="background:{}; padding:15px; border-radius:10px; text-align:center; color:white; font-size:18px;">
@@ -93,11 +96,7 @@ with col3:
     severity_data
     heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in severity_data.iterrows()]
     from folium.plugins import HeatMap
-    def create_heatmap(df_loc, latitude, longitude, zoom =12, tiles='OpenStreetMap'):
-        heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in df_loc.iterrows()]
-        world_map = folium.Map(location=[latitude, longitude], zoom_start=zoom, tiles=tiles)
-        HeatMap(heat_data).add_to(world_map)
-        return world_map
+    
 
     la_heatmap = create_heatmap(
         severity_data,
@@ -106,3 +105,52 @@ with col3:
         10 #zoom level
     )   
     st_folium(la_heatmap, width=800, height=400)
+
+
+with col1:
+    state_severity_counts = get_state_analysis_data(data)
+    state_severity_counts['Tooltip'] = state_severity_counts.apply(get_tooltip, axis=1)
+
+    top10_bar = px.bar(
+        state_severity_counts,
+        y="State",
+        x="Accident_Count",
+        color='Severity',
+        orientation='h',
+        custom_data=["Tooltip"],
+        hover_data={"Tooltip"},
+        text=None,
+        category_orders={
+            "State": state_severity_counts['State'].unique(),
+            "Severity": ['Critical', 'High', 'Medium', 'Low']
+        },
+        color_discrete_map={
+            'Critical': "#FF5733",
+            'High': "#FF8C00",
+            'Medium': "#FFD700",
+            'Low': "#28A745"
+        }
+    )
+
+    top10_bar.for_each_trace(
+        lambda trace: trace.update(
+            hovertemplate="%{customdata[0]}<extra></extra>"  # Use Tooltip column and remove default hover info
+        )
+    )
+
+    top10_bar.update_layout(
+        yaxis_title="State",
+        xaxis_title="Accident Count",
+        barmode="stack",
+        height = 400,
+        margin={"r": 0, "t": 50, "l": 0, "b": 50},  # Adjust margins for better fit
+        legend=dict(
+            yanchor="top",
+            y=0.33,
+            xanchor="right",
+            x=0.9
+        ),
+        # title="Top 10 States Accident Counts and Severity",
+        xaxis=dict(range=[0, state_severity_counts["Accident_Count"].max() * 1.8]) 
+    )
+    st.plotly_chart(top10_bar, use_container_width=True)
