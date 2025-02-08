@@ -207,7 +207,7 @@ def create_radar_chart(data, select_severity):
         ),
         showlegend=False,
         title=f'Road Condition by - {select_severity} Severity',
-        height=500,  # Increased height
+        height=400,  # Increased height
         width=800,   # Added explicit width
         margin=dict(t=50, l=50, r=50, b=50)  # Added margins to prevent cutoff
     )
