@@ -71,13 +71,7 @@ weather_fig.update_layout(
 st.plotly_chart(weather_fig, use_container_width=True)
 
 
-# Count missing values per row for weather columns
-missing_per_row = weather[weather_columns].isna().sum(axis=1)
-
-# Update weather DataFrame
-weather = weather[missing_per_row < 6]
-
-# Identify numerical columns (excluding road conditions which are binary)
+# Create KDE plots for each weather condition
 numerical_cols = ['Temperature(F)', 'Humidity(%)', 'Pressure(in)', 'Visibility(mi)', 'Wind_Speed(mph)', 'Precipitation(in)']
 
 def remove_outliers(df, column):
