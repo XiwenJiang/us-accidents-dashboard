@@ -19,6 +19,89 @@ box_template = """
     <span style="font-size:14px;">Δ {}</span>
 </div>
 """
+def create_severity_pie(severity_df):
+    # Sort the DataFrame to ensure correct order
+    severity_order = ['Critical', 'High', 'Medium', 'Low']
+    severity_df = severity_df.set_index('Severity Level').reindex(severity_order).reset_index()
+    
+    severity_pie = px.pie(
+        severity_df, 
+        values='Count', 
+        names='Severity Level', 
+        title='Severity Distribution',
+        color='Severity Level',
+        category_orders={'Severity Level': severity_order},
+        color_discrete_map={
+            'Critical': colors[0],
+            'High': colors[1],
+            'Medium': colors[2],
+            'Low': colors[3]
+        },
+        hole=0.5
+    )
+    
+    severity_pie.update_traces(
+        textposition='outside',
+        textinfo='percent+label',
+        pull=[0.1, 0.1, 0.1, 0.1]  # Add some space between slices
+    )
+    severity_pie.update_layout(
+        showlegend=False,  # Remove legend
+        margin=dict(t=30, l=30, r=30, b=30),  # Adjust margins
+        height=300,  # Reduced height
+        width=400   # Added specific width
+    )
+    return severity_pie
+    
+def top_10_city_barplot():
+    state_severity_counts = get_state_analysis_data(data)
+    state_severity_counts['Tooltip'] = state_severity_counts.apply(get_tooltip, axis=1)
+
+    top10_bar = px.bar(
+        state_severity_counts,
+        y="State",
+        x="Accident_Count",
+        color='Severity',
+        orientation='h',
+        custom_data=["Tooltip"],
+        hover_data={"Tooltip"},
+        text=None,
+        category_orders={
+            "State": state_severity_counts['State'].unique(),
+            "Severity": ['Critical', 'High', 'Medium', 'Low']
+        },
+        color_discrete_map={
+            'Critical': "#FF5733",
+            'High': "#FF8C00",
+            'Medium': "#FFD700",
+            'Low': "#28A745"
+        },
+        title="Top 10 States Accident Counts and Severity"
+    )
+
+    top10_bar.for_each_trace(
+        lambda trace: trace.update(
+            hovertemplate="%{customdata[0]}<extra></extra>"  # Use Tooltip column and remove default hover info
+        )
+    )
+
+    top10_bar.update_layout(
+        yaxis_title="State",
+        xaxis_title="Accident Count",
+        barmode="stack",
+        height = 400,
+        margin={"r": 0, "t": 50, "l": 0, "b": 50},  # Adjust margins for better fit
+        legend=dict(
+            yanchor="top",
+            y=0.33,
+            xanchor="right",
+            x=0.9
+        ),
+        # title="Top 10 States Accident Counts and Severity",
+        xaxis=dict(range=[0, state_severity_counts["Accident_Count"].max() * 1.8]) 
+    )
+    return top10_bar
+  
 
 def color_bubble_county_count():
     county_fips = pd.read_csv('county_fips.csv')
@@ -32,16 +115,20 @@ def color_bubble_county_count():
                                     zoom=2.8,
                                     size_max=80,
                                     title="County-level Accident Counts",
-                                        mapbox_style="carto-positron",
-                                        hover_name="County",
-                                        hover_data={
-                                            "tooltip": True,
-                                            "lat": False,
-                                            "lng": False
-                                        })
-    county_bubble.update_layout(showlegend=False)
+                                    mapbox_style="carto-positron",
+                                    hover_name="County",
+                                    hover_data={
+                                        "tooltip": True,
+                                        "lat": False,
+                                        "lng": False
+                                    },
+                                    height=600)  # Increased height from default to 600
+    county_bubble.update_layout(
+        showlegend=False,
+        margin=dict(t=30, r=10, l=10, b=10)  # Adjusted margins to maximize map space
+    )
     return county_bubble
-
+ 
 # Area chart of severity distribution over time
 def area_chart_severrity():
     # Extract year and quarter from Start_Time
@@ -91,66 +178,36 @@ with col2:
 
 with col3:
     # create a heatmap of los angeles with selected severity level
-    select_severity = st.selectbox('Select Severity Level', ['Critical', 'High', 'Medium', 'Low'])
-    severity_data = data[(data['Severity'] == select_severity) & (data['County'] == 'Los Angeles')]
-    severity_data
-    heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in severity_data.iterrows()]
-    from folium.plugins import HeatMap
-    
+    st.markdown("""
+        <style>
+            /* Increase font size of selectbox text */
+            div[data-baseweb="select"] > div {
+                font-size: 17px !important; 
+            }
+                
+            label[data-testid="stWidgetLabel"] {
+                font-size: 25px !important; /* Adjust as needed */
+                font-weight: bold; /* Make it bold */
+                color: red; /* Change color if needed */
+            }
 
+        </style>
+    """, unsafe_allow_html=True)
+    select_severity = st.selectbox('# Select Severity Level', ['Critical', 'High', 'Medium', 'Low'])
+    severity_data = data[(data['Severity'] == select_severity) & (data['County'] == 'Los Angeles')]
+    heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in severity_data.iterrows()]
+    
     la_heatmap = create_heatmap(
         severity_data,
         34.0522, 
         -118.0437, # lat, lon of Los Angeles
         10 #zoom level
     )   
+    st.markdown(f"<h5 style='text-align: center;'>Los Angeles Heat Map - {select_severity} Severity</h5>", unsafe_allow_html=True)
+
     st_folium(la_heatmap, width=800, height=400)
 
 
 with col1:
-    state_severity_counts = get_state_analysis_data(data)
-    state_severity_counts['Tooltip'] = state_severity_counts.apply(get_tooltip, axis=1)
-
-    top10_bar = px.bar(
-        state_severity_counts,
-        y="State",
-        x="Accident_Count",
-        color='Severity',
-        orientation='h',
-        custom_data=["Tooltip"],
-        hover_data={"Tooltip"},
-        text=None,
-        category_orders={
-            "State": state_severity_counts['State'].unique(),
-            "Severity": ['Critical', 'High', 'Medium', 'Low']
-        },
-        color_discrete_map={
-            'Critical': "#FF5733",
-            'High': "#FF8C00",
-            'Medium': "#FFD700",
-            'Low': "#28A745"
-        }
-    )
-
-    top10_bar.for_each_trace(
-        lambda trace: trace.update(
-            hovertemplate="%{customdata[0]}<extra></extra>"  # Use Tooltip column and remove default hover info
-        )
-    )
-
-    top10_bar.update_layout(
-        yaxis_title="State",
-        xaxis_title="Accident Count",
-        barmode="stack",
-        height = 400,
-        margin={"r": 0, "t": 50, "l": 0, "b": 50},  # Adjust margins for better fit
-        legend=dict(
-            yanchor="top",
-            y=0.33,
-            xanchor="right",
-            x=0.9
-        ),
-        # title="Top 10 States Accident Counts and Severity",
-        xaxis=dict(range=[0, state_severity_counts["Accident_Count"].max() * 1.8]) 
-    )
-    st.plotly_chart(top10_bar, use_container_width=True)
+    st.plotly_chart(create_severity_pie(severity_df), use_container_width=True)
+    st.plotly_chart(top_10_city_barplot(), use_container_width=True)
