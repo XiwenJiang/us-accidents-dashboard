@@ -10,6 +10,7 @@ st.write("This page will feature visualizations for time-based trends.")
 
 data = st.session_state.data
 
+
 # Extract year and quarter from Start_Time
 data['Quarter'] = data['Start_Time'].dt.quarter
 data['YearQuarter'] = data['Year'].astype(str) + '-Q' + data['Quarter'].astype(str)

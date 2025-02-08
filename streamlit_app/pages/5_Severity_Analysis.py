@@ -37,9 +37,25 @@ def color_bubble_county_count():
                                             "lng": False
                                         })
     county_bubble.update_layout(showlegend=False)
-
     return county_bubble
 
+# Area chart of severity distribution over time
+def area_chart_severrity():
+    # Extract year and quarter from Start_Time
+    data['Quarter'] = data['Start_Time'].dt.quarter
+    data['YearQuarter'] = data['Year'].astype(str) + '-Q' + data['Quarter'].astype(str)
+
+    # Group by state and time period
+    severity_qt_yr_df = data.groupby(['Severity', 'YearQuarter'])['ID'].count().reset_index(name='Count')
+
+    # create area chart
+    fig = px.area(severity_qt_yr_df, x='YearQuarter', y='Count', color='Severity', 
+                title='Severity Distribution Over Time',
+                labels={'YearQuarter': 'Year-Quarter', 'Count': 'Number of Accidents'},
+                color_discrete_sequence=colors)
+    fig.update_layout(legend_title_text='Severity', legend_title_side="left")
+    fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
+    return fig
 
 
 colors = ["#FF5733", "#FF8C00", "#FFD700", "#28A745"]  # 红，橙，黄，绿
@@ -48,7 +64,6 @@ colors = ["#FF5733", "#FF8C00", "#FFD700", "#28A745"]  # 红，橙，黄，绿
 data = st.session_state.data
 severity_df = get_severity_data(data)
 
-severity_df
 
 col1, col2, col3 = st.columns((0.3, 0.4, 0.3), gap ='small')
 
@@ -69,4 +84,4 @@ with col2:
 
     # Add county-level analysis
     st.plotly_chart(color_bubble_county_count(), use_container_width=True)
-
+    st.plotly_chart(area_chart_severrity(), use_container_width=True)
