@@ -17,6 +17,31 @@ box_template = """
 </div>
 """
 
+def color_bubble_county_count():
+    county_fips = pd.read_csv('county_fips.csv')
+    county_fips['STCOUNTYFP'] = county_fips['STCOUNTYFP'].astype(str).str.zfill(5)
+
+    county_bubble = px.scatter_mapbox(county_fips,
+                                    lat="lat",
+                                    lon="lng",
+                                    size="Count",
+                                    color="State",
+                                    zoom=2.8,
+                                    size_max=80,
+                                    title="County-level Accident Counts",
+                                        mapbox_style="carto-positron",
+                                        hover_name="County",
+                                        hover_data={
+                                            "tooltip": True,
+                                            "lat": False,
+                                            "lng": False
+                                        })
+    county_bubble.update_layout(showlegend=False)
+
+    return county_bubble
+
+
+
 colors = ["#FF5733", "#FF8C00", "#FFD700", "#28A745"]  # 红，橙，黄，绿
 
 
@@ -42,27 +67,6 @@ with col2:
     with col2_4:
         st.markdown(box_template.format(colors[3], "Low", severity_df['Count'][2], f"{severity_df['Percentage'][2]:.2f}%"), unsafe_allow_html=True)
 
+    # Add county-level analysis
+    st.plotly_chart(color_bubble_county_count(), use_container_width=True)
 
-# Add county-level analysis
-st.markdown("#### Accident Distribution by County")
-
-def color_bubble_county_count():
-    county_fips = pd.read_csv('county_fips.csv')
-    county_fips['STCOUNTYFP'] = county_fips['STCOUNTYFP'].astype(str).str.zfill(5)
-
-    county_bubble = px.scatter_mapbox(county_fips,
-                                    lat="lat",
-                                    lon="lng",
-                                    size="Count",
-                                    color="State",
-                                    zoom=3,
-                                    size_max=80,
-                                        mapbox_style="carto-positron",
-                                        hover_name="County",
-                                        hover_data={
-                                            "tooltip": True,
-                                            "lat": False,
-                                            "lng": False
-                                        })
-    return county_bubble
-st.plotly_chart(color_bubble_county_count(), use_container_width=True)
