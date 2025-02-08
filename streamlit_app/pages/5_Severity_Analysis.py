@@ -46,9 +46,14 @@ with col2:
 # Add county-level analysis
 st.markdown("#### Accident Distribution by County")
 
-county_data = get_county_data(data)
-county_data 
+county_fips = pd.read_csv('county_fips.csv')
+county_fips['STCOUNTYFP'] = county_fips['STCOUNTYFP'].astype(str).str.zfill(5)
+county_fips
 
-#save county data to local file
-
-county_data.to_csv('county_data.csv', index=False)
+fig = px.choropleth_mapbox(county_fips, 
+                           geojson="https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json",
+                           locations="STCOUNTYFP",
+                           color="Count",
+                           mapbox_style="carto-positron",
+                           zoom=3)
+st.plotly_chart(fig, use_container_width=False)
