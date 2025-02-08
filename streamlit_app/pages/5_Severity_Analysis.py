@@ -85,3 +85,24 @@ with col2:
     # Add county-level analysis
     st.plotly_chart(color_bubble_county_count(), use_container_width=True)
     st.plotly_chart(area_chart_severrity(), use_container_width=True)
+
+with col3:
+    # create a heatmap of los angeles with selected severity level
+    select_severity = st.selectbox('Select Severity Level', ['Critical', 'High', 'Medium', 'Low'])
+    severity_data = data[(data['Severity'] == select_severity) & (data['County'] == 'Los Angeles')]
+    severity_data
+    heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in severity_data.iterrows()]
+    from folium.plugins import HeatMap
+    def create_heatmap(df_loc, latitude, longitude, zoom =12, tiles='OpenStreetMap'):
+        heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in df_loc.iterrows()]
+        world_map = folium.Map(location=[latitude, longitude], zoom_start=zoom, tiles=tiles)
+        HeatMap(heat_data).add_to(world_map)
+        return world_map
+
+    la_heatmap = create_heatmap(
+        severity_data,
+        34.0522, 
+        -118.0437, # lat, lon of Los Angeles
+        10 #zoom level
+    )   
+    st_folium(la_heatmap, width=800, height=400)
