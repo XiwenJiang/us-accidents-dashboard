@@ -10,6 +10,42 @@ An interactive dashboard analyzing 3.5 million traffic accidents across the Unit
 - **Road Condition Impact**: Visualization of how road features affect accident occurrence
 - **Severity Analysis**: Deep dive into accident severity patterns and contributing factors
 
+
+## 🎥 Demo
+![Demo](assets/demo.gif)
+
+### Key Features Demo
+<details>
+<summary>Click to expand demos</summary>
+
+#### Regional Analysis
+![Regional Analysis](assets/regional_analysis.gif)
+- Interactive state-level choropleth map
+- City-level accident hotspots
+- Dynamic filtering by year
+
+#### Temporal Patterns
+![Temporal Analysis](assets/temporal_analysis.gif)
+- Year-over-year trends
+- Monthly patterns
+- Day of week analysis
+- Hour of day distribution
+
+#### Weather Impact
+![Weather Analysis](assets/weather_impact.gif)
+- Weather condition correlation
+- Temperature impact visualization
+- Visibility analysis
+
+#### Severity Analysis
+![Severity Analysis](assets/severity_analysis.gif)
+- Severity distribution by state
+- Road condition impact
+- Weather correlation with severity
+
+</details>
+
+
 ## 📊 Key Visualizations
 - Choropleth maps showing state-wise accident distributions
 - Interactive heatmaps for city-level accident hotspots
