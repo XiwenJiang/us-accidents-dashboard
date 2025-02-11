@@ -12,36 +12,23 @@ An interactive dashboard analyzing 3.5 million traffic accidents across the Unit
 
 
 ## 🎥 Demo
-![Demo](assets/demo.gif)
+<img src="./assets/demo.gif" alt="Demo" width="800"/>
 
 ### Key Features Demo
 <details>
 <summary>Click to expand demos</summary>
 
 #### Regional Analysis
-![Regional Analysis](assets/regional_analysis.gif)
-- Interactive state-level choropleth map
-- City-level accident hotspots
-- Dynamic filtering by year
+<img src="./assets/regional_analysis.gif" alt="Regional Analysis" width="800"/>
 
 #### Temporal Patterns
-![Temporal Analysis](assets/temporal_analysis.gif)
-- Year-over-year trends
-- Monthly patterns
-- Day of week analysis
-- Hour of day distribution
+<img src="./assets/temporal_analysis.gif" alt="Temporal Analysis" width="800"/>
 
 #### Weather Impact
-![Weather Analysis](assets/weather_impact.gif)
-- Weather condition correlation
-- Temperature impact visualization
-- Visibility analysis
+<img src="./assets/weather_impact.gif" alt="Weather Analysis" width="800"/>
 
 #### Severity Analysis
-![Severity Analysis](assets/severity_analysis.gif)
-- Severity distribution by state
-- Road condition impact
-- Weather correlation with severity
+<img src="./assets/severity_analysis.gif" alt="Severity Analysis" width="800"/>
 
 </details>
 
