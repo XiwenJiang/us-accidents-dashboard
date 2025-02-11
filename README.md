@@ -19,16 +19,16 @@ An interactive dashboard analyzing 3.5 million traffic accidents across the Unit
 <summary>Click to expand demos</summary>
 
 #### Regional Analysis
-<img src="./assets/regional_analysis.gif" alt="Regional Analysis" width="800"/>
+<img src="./assets/Regional_Analysis.gif" alt="Regional Analysis" width="800"/>
 
 #### Temporal Patterns
-<img src="./assets/temporal_analysis.gif" alt="Temporal Analysis" width="800"/>
+<img src="./assets/Temporal_Analysis.gif" alt="Temporal Analysis" width="800"/>
 
 #### Weather Impact
-<img src="./assets/weather_impact.gif" alt="Weather Analysis" width="800"/>
+<img src="./assets/Weather_Impact.gif" alt="Weather Analysis" width="800"/>
 
 #### Severity Analysis
-<img src="./assets/severity_analysis.gif" alt="Severity Analysis" width="800"/>
+<img src="./assets/Severity_Analysis.gif" alt="Severity Analysis" width="800"/>
 
 </details>
 
@@ -98,9 +98,8 @@ The dataset used in this project is sourced from Kaggle's US Accidents dataset, 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📫 Contact
-- Author: [Your Name]
-- Email: [Your Email]
-- GitHub: [Your GitHub Profile]
+- Author: [Xiwen Jiang]
+- Email: [datasciencejiang@gmail.com]
 
 ## 📄 License
 This project is licensed under the MIT License - see the LICENSE file for details.
