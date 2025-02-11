@@ -1,43 +1,88 @@
-# us-accidents-dashboard
+# US Traffic Accidents Analysis Dashboard
 
-## Project Goal
-The primary goal of the project is to build an interactive Streamlit dashboard that provides insights and visualizations related to traffic accidents across the United States. Specifically, the dashboard should:
+## Project Overview
+An interactive dashboard analyzing 3.5 million traffic accidents across the United States (2016-2023). This project provides comprehensive insights into accident patterns, severity distributions, and contributing factors through dynamic visualizations.
 
-1. *Analyze accident trends* by severity, location (city, state), time, and other factors (such as weather, time of day, etc.).
-   
-2. Provide *interactive visualizations* for users to explore patterns such as:
-    - Accident severity distribution across different states.
-    - Time-of-day and day-of-week patterns.
-    - Geospatial distribution of accidents.
+## 🚀 Features
+- **Regional Analysis**: Interactive maps and charts showing accident distributions across states and cities
+- **Temporal Analysis**: Time-based trends analysis (yearly, monthly, daily, hourly)
+- **Weather Impact**: Analysis of weather conditions' influence on accident frequency and severity
+- **Road Condition Impact**: Visualization of how road features affect accident occurrence
+- **Severity Analysis**: Deep dive into accident severity patterns and contributing factors
 
-3. Allow stakeholders (e.g., government agencies, researchers, businesses) to interactively explore accident data to identify hotspots, high-severity areas, or factors contributing to accidents.
-   
-4. Provide actionable insights for decision-makers such as policy makers, transportation authorities, or traffic safety professionals to improve road safety.
+## 📊 Key Visualizations
+- Choropleth maps showing state-wise accident distributions
+- Interactive heatmaps for city-level accident hotspots
+- Time series analysis with dynamic filtering
+- Weather correlation plots
+- Road condition impact analysis
+- Severity distribution charts
 
-## Nature of the US-Accident Dataset:
-1. The data is a tabular dataset containing information about traffic accidents across 49 U.S. states, with columns representing accident-specific attributes (e.g., Start_Lat, Start_Lng, Severity, Start_Time, City, State, Distance, etc.).
-2. It includes both geospatial data (latitude and longitude), temporal data (timestamps of accidents), and categorical data (severity levels, city, state, etc.).
-3. The dataset is relatively large, containing millions of records, and covers multiple years (from February 2016 to March 2023).
-4. The dataset is real-time and comes from multiple APIs that stream accident data, sourced from transportation departments, law enforcement, and other traffic entities.
+## 🛠 Technology Stack
+- **Frontend**: Streamlit
+- **Data Processing**: Pandas, NumPy
+- **Visualization**: Plotly, Folium
+- **Data Analysis**: SciPy, Scikit-learn
+- **Version Control**: Git/GitHub
 
-## Delivery and Audience:
-- Delivery: The dashboard will be delivered as an interactive web application built with *Streamlit*, which will be hosted on a cloud platform (Streamlit Cloud)
+## 📦 Installation & Setup
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/us-accidents-dashboard.git
+cd us-accidents-dashboard
+```
 
-- Audience: 
-  - *Researchers* interested in studying the causes and patterns of accidents for their academic work or policy suggestions.
-  - *Businesses*, especially in the insurance and logistics industries, who need insights to improve operations and assess risk factors based on accident trends.
-  - *General public* who may want to explore accident data by location or time to make informed decisions about travel.
+2. Install requirements:
+```bash
+pip install -r requirements.txt
+```
 
+3. Run the application:
+```bash
+streamlit run streamlit_app/Project_Introduction.py
+```
 
-# Statiscial Analysis
+## 📂 Project Structure
+```
+us-accidents-dashboard/
+├── streamlit_app/
+│   ├── Project_Introduction.py
+│   ├── constants.py
+│   ├── data_processing.py
+│   └── pages/
+│       ├── 1_Temporal_Analysis.py
+│       ├── 2_Regional_Analysis.py
+│       ├── 3_Weather_Impact.py
+│       ├── 4_Road_Condition_Impact.py
+│       └── 5_Severity_Analysis.py
+├── data/
+│   └── county_fips.csv
+├── requirements.txt
+└── README.md
+```
 
-## Geospatial analysis 
-    using maps, highlighting accident hotspots.
+## 📊 Data Source
+The dataset used in this project is sourced from Kaggle's US Accidents dataset, containing approximately 3.5 million records of accidents from February 2016 to March 2023.
 
+## 🔍 Key Findings
+1. California has the highest number of accidents, accounting for ~30% of total records
+2. Weather conditions significantly impact accident severity
+3. Most accidents occur during rush hours (7-9 AM and 4-6 PM)
+4. Junction areas show higher accident frequencies
+5. Visibility has a strong correlation with accident severity
 
-## Time-based analysis 
-Time series analysis for accident trends (e.g., hour of day, day of week).
-Discovery the seasonality.
+## 🤝 Contributing
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Severity analysis 
-Based on accident impact levels.
+## 📫 Contact
+- Author: [Your Name]
+- Email: [Your Email]
+- GitHub: [Your GitHub Profile]
+
+## 📄 License
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+- Data source: [Kaggle US Accidents Dataset](https://www.kaggle.com/sobhanmoosavi/us-accidents)
+- Streamlit community for excellent documentation and examples
+- Contributors and maintainers of the libraries used in this project
