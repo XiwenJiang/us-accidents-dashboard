@@ -27,7 +27,7 @@ def get_spark(app_name: str = "us-accidents"):
 
     # ---------- 4. Spark + S3A 启动参数 ----------
     os.environ["PYSPARK_SUBMIT_ARGS"] = (
-        "--packages org.apache.hadoop:hadoop-aws:3.3.6,"
+        "--packages org.apache.hadoop:hadoop-aws:3.4.2,"
         "com.amazonaws:aws-java-sdk-bundle:1.12.367 "
         f"--conf spark.jars.ivy={ivy_dir} "
         "--conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem "
@@ -46,12 +46,24 @@ def get_spark(app_name: str = "us-accidents"):
     )
 
     # ---------- 5. Create SparkSession ----------
+
+    HADOOP_VER = "3.4.2"
+
+    packages = ",".join([
+    f"org.apache.hadoop:hadoop-aws:{HADOOP_VER}",
+    "com.amazonaws:aws-java-sdk-bundle:1.12.367"
+    ])
+
     spark = (
         SparkSession.builder
-        .master("local[*]")
-        .appName(app_name)
+        .appName("us-accidents-s3-parquet")
+        .config("spark.jars.packages", packages)
+        .config("spark.hadoop.fs.s3a.vectored.read.enabled", "false")
+        .config("spark.hadoop.parquet.read.vectored.io.enabled", "false")
+
         .getOrCreate()
     )
+
 
     spark.sparkContext.setLogLevel("WARN")
     return spark
