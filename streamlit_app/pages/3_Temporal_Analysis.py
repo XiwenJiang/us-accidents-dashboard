@@ -2,13 +2,21 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from data_processing import get_temporal_data, get_top_10_states_by_quarter, get_racing_bar_tooltip
+from data_processing import get_racing_bar_tooltip
+
+S3_BASE = "s3://us-accidents-dashboard-1445/processed"
+
+@st.cache_data(ttl=3600)
+def load_table(name: str) -> pd.DataFrame:
+    return pd.read_parquet(f"{S3_BASE}/{name}/")
 
 st.title("Temporal Analysis")
 st.write("Analyze accident trends over time.")
 st.write("This page will feature visualizations for time-based trends.")
 
 data = st.session_state.data
+
+
 
 
 # Extract year and quarter from Start_Time
