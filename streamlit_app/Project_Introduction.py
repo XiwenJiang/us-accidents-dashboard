@@ -1,69 +1,40 @@
-import os
 import streamlit as st
 import plotly.express as px
 import pandas as pd
-import requests
-from constants import US_STATES, STATE_COORDINATES
-from data_processing import load_data
+from constants import STATE_COORDINATES
 
-file_url = "https://media.githubusercontent.com/media/XiwenJiang/us-accidents-dashboard/main/US_Accidents_March23_sampled_500k.csv"
+S3_BASE = "s3://us-accidents-dashboard-1445/processed"
 
-st.set_page_config(layout="wide",
-                   page_title="US Accidents Dashboard",
-                   page_icon=":car:",
-                   initial_sidebar_state="auto")
-
-# Load dataset
-@st.cache_data
-def load_cached_data():
-    return load_data(file_url)
-
-st.session_state.data = load_cached_data()
-
-@st.cache_data
-def state_yearly_data(data):
-    state_yearly_accidents = data.groupby(['State_Code', 'Year']).agg({'ID': 'count'}).reset_index()
-    state_yearly_accidents.columns = ['State_Code', 'Year', 'Accident_Count']
-
-    # Step 4: Aggregate accident counts by severity for each state and year
-    state_yearly_severity_counts = data.groupby(['State_Code', 'Year', 'Severity']).agg({'ID': 'count'}).reset_index()
-    state_yearly_severity_counts.columns = ['State_Code', 'Year', 'Severity', 'Severity_Count']
-
-    # Step 5: Merge the total accident counts and severity counts into one DataFrame
-    state_yearly_data = pd.merge(state_yearly_accidents, state_yearly_severity_counts, on=['State_Code', 'Year'], how='left')
+@st.cache_data(ttl=3600)
+def load_table(name: str) -> pd.DataFrame:
+    return pd.read_parquet(f"{S3_BASE}/{name}/")
 
 
-    # Map state codes to lat/lon
-    state_yearly_data['Latitude'] = state_yearly_data['State_Code'].map(lambda x: STATE_COORDINATES[x][0])
-    state_yearly_data['Longitude'] = state_yearly_data['State_Code'].map(lambda x: STATE_COORDINATES[x][1])
+@st.cache_data(ttl=3600)
+def build_state_yearly_data() -> pd.DataFrame:
+    df = load_table("state_yearly_summary")
 
-    # Step 6: Create the tooltip column with all severity counts
-    def get_severity_count(state_code, severity):
-        # Filter the data for the state and severity
-        severity_count = state_yearly_data[(state_yearly_data['State_Code'] == state_code) & 
-                                        (state_yearly_data['Severity'] == severity)]
-        
-        # If the severity count exists, return it; otherwise, return 0
-        if not severity_count.empty:
-            return severity_count['Severity_Count'].values[0]
-        else:
-            return 0  # If no data, return 0
+    # 经纬度（小表映射，极快）
+    df["Latitude"] = df["State_Code"].map(lambda x: STATE_COORDINATES[x][0])
+    df["Longitude"] = df["State_Code"].map(lambda x: STATE_COORDINATES[x][1])
 
-    # Generate the tooltip for each row
-    state_yearly_data['tooltip'] = state_yearly_data.apply(
-        lambda row: f"State: {row['State_Code']}<br>Total Accidents: {row['Accident_Count']}<br>"
-                    f"Low: {get_severity_count(row['State_Code'], 'Low')}<br>"
-                    f"Medium: {get_severity_count(row['State_Code'], 'Medium')}<br>"
-                    f"High: {get_severity_count(row['State_Code'], 'High')}<br>"
-                    f"Critical: {get_severity_count(row['State_Code'], 'Critical')}",
-        axis=1)
-    return state_yearly_data
-state_yearly_data = state_yearly_data(st.session_state.data)
+    # tooltip（O(N) 字符串拼接，不再做嵌套过滤）
+    df["tooltip"] = (
+        "State: " + df["State_Code"].astype(str) + "<br>"
+        "Total Accidents: " + df["Accident_Count"].astype(int).astype(str) + "<br>"
+        "Low: " + df["Low"].astype(int).astype(str) + "<br>"
+        "Medium: " + df["Medium"].astype(int).astype(str) + "<br>"
+        "High: " + df["High"].astype(int).astype(str) + "<br>"
+        "Critical: " + df["Critical"].astype(int).astype(str)
+    )
+    return df
+
+state_yearly_data = build_state_yearly_data()
 
 
 
 st.title("Welcome to the US Accidents Dashboard!")
-data = st.session_state.data
+
 
 st.subheader("Project Description")
 st.write("""
