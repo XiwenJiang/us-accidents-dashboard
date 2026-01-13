@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from data_processing import get_racing_bar_tooltip
+from data_processing import state_code
 
 S3_BASE = "s3://us-accidents-dashboard-1445/processed"
 
@@ -14,17 +14,18 @@ st.title("Temporal Analysis")
 st.write("Analyze accident trends over time.")
 st.write("This page will feature visualizations for time-based trends.")
 
-data = st.session_state.data
+state_time_counts = load_table("state_quarter_counts").rename(columns={
+    "State": "State_Code",
+    "year": "Year",
+    "quarter": "Quarter",
+    "accident_count": "Count"
+})
 
+state_time_counts["State"] = state_time_counts["State_Code"].apply(state_code)
 
-
-
-# Extract year and quarter from Start_Time
-data['Quarter'] = data['Start_Time'].dt.quarter
-data['YearQuarter'] = data['Year'].astype(str) + '-Q' + data['Quarter'].astype(str)
-
-# Group by state and time period
-state_time_counts = data.groupby(['State', 'Year', 'Quarter', 'YearQuarter'])['ID'].count().reset_index(name='Count')
+state_time_counts["YearQuarter"] = (
+    state_time_counts["Year"].astype(str) + "-Q" + state_time_counts["Quarter"].astype(str)
+)
 
 # Get top 10 states for each time period and sort them
 top_10_states_by_yr_ = (state_time_counts.groupby('YearQuarter')
@@ -33,9 +34,10 @@ top_10_states_by_yr_ = (state_time_counts.groupby('YearQuarter')
                  .reset_index(drop=True))
 
 # Get severity counts for each state and time period
-severity_counts = (data.groupby(['State', 'YearQuarter', 'Severity'])
-                      .size()
-                      .reset_index(name='Severity_Count'))
+severity_counts = load_table("state_yearquarter_severity_counts")
+severity_map = {1: "Low", 2: "Medium", 3: "High", 4: "Critical"}
+severity_counts["Severity"] = severity_counts["Severity"].map(severity_map)
+severity_counts["State"] = severity_counts["State"].apply(state_code)
 
 # Create base figure
 racing_bar = go.Figure()
@@ -151,7 +153,9 @@ racing_bar.update_layout(
 st.plotly_chart(racing_bar)
 
 # Add state selection in sidebar
-states_list = ["All States"] + sorted(data['State'].unique().tolist())
+states_list = ["All States"] + sorted(state_time_counts["State"].unique().tolist())
+
+
 selected_state = st.sidebar.selectbox(
     "Select State",
     options=states_list,
@@ -160,13 +164,13 @@ selected_state = st.sidebar.selectbox(
 
 # Filter data based on state selection
 if selected_state == "All States":
-    filtered_data = data
+    state_time_counts_f = state_time_counts
+    top_10_states_by_yr_f = top_10_states_by_yr_
 else:
-    filtered_data = data[data['State'] == selected_state]
+    state_time_counts_f = state_time_counts[state_time_counts["State"] == selected_state]
+    top_10_states_by_yr_f = top_10_states_by_yr_[top_10_states_by_yr_["State"] == selected_state]
+    st.title(selected_state)
 
-# Add title with selected state
-if selected_state != "All States":
-    st.title(f"{selected_state}")
 
 # Update all plots with filtered data
 col1, col2 = st.columns(2)
@@ -177,17 +181,25 @@ with col1:
     # Define the desired order for severity levels
     severity_order = ['Critical', 'High', 'Medium', 'Low']
 
-    # Convert the 'Severity' column to a categorical type with the specified order
-    filtered_data['Severity'] = pd.Categorical(filtered_data['Severity'], categories=severity_order, ordered=True)
+    accidents_per_year_severity = load_table("accidents_by_year_severity").rename(columns={
+        "year": "Year",
+        "accident_count": "Count"
+    })
+    accidents_per_year = load_table("accidents_by_year_total").rename(columns={
+        "year": "Year",
+        "accident_count": "Total_Count"
+    })
 
-    # Ensure 'Start_Time' is in datetime format
-    filtered_data['Start_Time'] = pd.to_datetime(filtered_data['Start_Time'], errors='coerce')
+    severity_map = {1: "Low", 2: "Medium", 3: "High", 4: "Critical"}
+    accidents_per_year_severity["Severity"] = accidents_per_year_severity["Severity"].map(severity_map)
+    accidents_per_year_severity["Severity"] = pd.Categorical(
+        accidents_per_year_severity["Severity"],
+        categories=severity_order,
+        ordered=True
+    )
 
-    # Extract year from 'Start_Time'
-    filtered_data['Year'] = filtered_data['Start_Time'].dt.year
-
-    # Group by year and severity, and count the number of accidents
-    accidents_per_year_severity = filtered_data.groupby(['Year', 'Severity']).size().reset_index(name='Count')
+    if selected_state != "All States":
+        st.info("Year-by-severity trend is currently shown at national level in v2 (Parquet summary).")
 
     # Plotting the data using Plotly
     yr_svrt_fig = px.bar(accidents_per_year_severity, x='Year', y='Count', color='Severity', 
@@ -196,8 +208,6 @@ with col1:
                 category_orders={'Severity': severity_order},
                 barmode='group')
 
-    # Group by year to get the total number of accidents per year
-    accidents_per_year = filtered_data.groupby('Year').size().reset_index(name='Total_Count')
 
     # Add a line chart on top of the bar chart
     yr_svrt_fig.add_trace(go.Scatter(x=accidents_per_year['Year'], 
@@ -212,8 +222,22 @@ with col1:
     st.plotly_chart(yr_svrt_fig)
 
     # Extract year and month, create datetime series
-    filtered_data['YearMonth'] = pd.to_datetime(filtered_data['Start_Time'].dt.strftime('%Y-%m'))
-    accidents_per_month = filtered_data.groupby('YearMonth').size().reset_index(name='Count')
+    accidents_per_month = load_table("accidents_by_year_month").rename(columns={
+        "year": "Year",
+        "month": "Month",
+        "accident_count": "Count"
+    })
+
+    accidents_per_month["YearMonth"] = pd.to_datetime(
+        accidents_per_month["Year"].astype(str) + "-" + accidents_per_month["Month"].astype(str).str.zfill(2)
+    )
+
+    accidents_per_month = accidents_per_month.sort_values("YearMonth")
+
+    if selected_state != "All States":
+        st.info("Monthly trend is currently shown at national level in v2 (Parquet summary).")
+
+
 
     # Create monthly trend plot
     monthly_trend = px.line(accidents_per_month, 
@@ -239,19 +263,23 @@ with col1:
 
 
 with col2:
-    accidents_per_weekday = filtered_data.groupby('Day of Week').size().reset_index(name = 'Total_Count')
+    # weekday
+    wk = load_table("accidents_by_weekday").rename(columns={"accident_count": "Total_Count"})
 
-    dayofweek = {
-        0: 'Monday',
-        1: 'Tuesday', 
-        2: 'Wednesday',
-        3: 'Thursday',
-        4: 'Friday',
-        5: 'Saturday',
-        6: 'Sunday'
-    }
-    accidents_per_weekday['Day of Week'] = accidents_per_weekday['Day of Week'].map(dayofweek)
+    # Spark: day_of_week 1=Sunday..7=Saturday -> 0=Monday..6=Sunday 
+    wk["Day of Week"] = wk["day_of_week"].map({2:0, 3:1, 4:2, 5:3, 6:4, 7:5, 1:6})
+    accidents_per_weekday = wk[["Day of Week", "Total_Count"]].sort_values("Day of Week")
+
     weekday_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+
+    # hour
+    hr = load_table("accidents_by_hour").rename(columns={
+        "hour": "Hour",
+        "accident_count": "Total_Count"
+    })
+    accidents_per_hr = hr.sort_values("Hour")
+
 
     wkdy_barfig = px.bar(accidents_per_weekday,
                         x = 'Day of Week',
@@ -262,9 +290,6 @@ with col2:
                         labels={'Day of Week': 'Day of Week', 'Total_Count': 'Number of Accidents'})
     wkdy_barfig.update_layout(showlegend=False)
     st.plotly_chart(wkdy_barfig)
-
-
-    accidents_per_hr = filtered_data.groupby('Hour').size().reset_index(name = "Total_Count")
 
     hour_barfig = px.bar(accidents_per_hr,
                          x = 'Hour',
