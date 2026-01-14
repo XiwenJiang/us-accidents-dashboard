@@ -10,6 +10,15 @@ S3_BASE = "s3://us-accidents-dashboard-1445/processed"
 def load_table(name: str) -> pd.DataFrame:
     return pd.read_parquet(f"{S3_BASE}/{name}/")
 
+def filter_by_selected_state(df: pd.DataFrame, selected_state: str, state_col: str = "State") -> pd.DataFrame:
+    """df[state_col] is state code; selected_state is full name. Return filtered df."""
+    if selected_state == "All States":
+        return df
+    # convert code -> full name for filtering
+    tmp = df.copy()
+    tmp[state_col] = tmp[state_col].apply(state_code)
+    return tmp[tmp[state_col] == selected_state]
+
 st.title("Temporal Analysis")
 st.write("Analyze accident trends over time.")
 st.write("This page will feature visualizations for time-based trends.")
@@ -36,6 +45,7 @@ top_10_states_by_yr_ = (state_time_counts.groupby('YearQuarter')
 # Get severity counts for each state and time period
 severity_counts = load_table("state_yearquarter_severity_counts")
 severity_map = {1: "Low", 2: "Medium", 3: "High", 4: "Critical"}
+weekday_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 severity_counts["Severity"] = severity_counts["Severity"].map(severity_map)
 severity_counts["State"] = severity_counts["State"].apply(state_code)
 
@@ -178,29 +188,40 @@ col1, col2 = st.columns(2)
 
 
 with col1:
-    # Define the desired order for severity levels
     severity_order = ['Critical', 'High', 'Medium', 'Low']
 
-    accidents_per_year_severity = load_table("accidents_by_year_severity").rename(columns={
-        "year": "Year",
-        "accident_count": "Count"
-    })
-    accidents_per_year = load_table("accidents_by_year_total").rename(columns={
-        "year": "Year",
-        "accident_count": "Total_Count"
-    })
+    if selected_state == "All States":
+        accidents_per_year_severity = load_table("accidents_by_year_severity").rename(columns={
+            "year": "Year",
+            "accident_count": "Count"
+        })
+        accidents_per_year = load_table("accidents_by_year_total").rename(columns={
+            "year": "Year",
+            "accident_count": "Total_Count"
+        })
+    else:
+        accidents_per_year_severity = load_table("state_year_severity_counts")
+        accidents_per_year_severity = filter_by_selected_state(accidents_per_year_severity, selected_state, "State")
+        accidents_per_year_severity = accidents_per_year_severity.rename(columns={
+            "year": "Year",
+            "accident_count": "Count"
+        })
 
-    severity_map = {1: "Low", 2: "Medium", 3: "High", 4: "Critical"}
+        accidents_per_year = load_table("state_year_total_counts")
+        accidents_per_year = filter_by_selected_state(accidents_per_year, selected_state, "State")
+        accidents_per_year = accidents_per_year.rename(columns={
+            "year": "Year",
+            "accident_count": "Total_Count"
+        })
+
+    # map severity and set order
     accidents_per_year_severity["Severity"] = accidents_per_year_severity["Severity"].map(severity_map)
     accidents_per_year_severity["Severity"] = pd.Categorical(
         accidents_per_year_severity["Severity"],
         categories=severity_order,
         ordered=True
     )
-
-    if selected_state != "All States":
-        st.info("Year-by-severity trend is currently shown at national level in v2 (Parquet summary).")
-
+    
     # Plotting the data using Plotly
     yr_svrt_fig = px.bar(accidents_per_year_severity, x='Year', y='Count', color='Severity', 
                 title='Number of Accidents per Year by Severity',
@@ -222,22 +243,25 @@ with col1:
     st.plotly_chart(yr_svrt_fig)
 
     # Extract year and month, create datetime series
-    accidents_per_month = load_table("accidents_by_year_month").rename(columns={
-        "year": "Year",
-        "month": "Month",
-        "accident_count": "Count"
-    })
+    if selected_state == "All States":
+        accidents_per_month = load_table("accidents_by_year_month").rename(columns={
+            "year": "Year",
+            "month": "Month",
+            "accident_count": "Count"
+        })
+    else:
+        accidents_per_month = load_table("state_year_month_counts")
+        accidents_per_month = filter_by_selected_state(accidents_per_month, selected_state, "State")
+        accidents_per_month = accidents_per_month.rename(columns={
+            "year": "Year",
+            "month": "Month",
+            "accident_count": "Count"
+        })
 
     accidents_per_month["YearMonth"] = pd.to_datetime(
         accidents_per_month["Year"].astype(str) + "-" + accidents_per_month["Month"].astype(str).str.zfill(2)
     )
-
     accidents_per_month = accidents_per_month.sort_values("YearMonth")
-
-    if selected_state != "All States":
-        st.info("Monthly trend is currently shown at national level in v2 (Parquet summary).")
-
-
 
     # Create monthly trend plot
     monthly_trend = px.line(accidents_per_month, 
@@ -263,21 +287,31 @@ with col1:
 
 
 with col2:
-    # weekday
-    wk = load_table("accidents_by_weekday").rename(columns={"accident_count": "Total_Count"})
+    if selected_state == "All States":
+        wk = load_table("accidents_by_weekday").rename(columns={"accident_count": "Total_Count"})
+        # national table uses day_of_week 1..7
+        wk["Day of Week"] = wk["day_of_week"].map({2:0, 3:1, 4:2, 5:3, 6:4, 7:5, 1:6})
+    else:
+        wk = load_table("state_weekday_counts").rename(columns={"accident_count": "Total_Count"})
+        wk = filter_by_selected_state(wk, selected_state, "State")
+        wk["Day of Week"] = wk["day_of_week"].map({2:0, 3:1, 4:2, 5:3, 6:4, 7:5, 1:6})
 
-    # Spark: day_of_week 1=Sunday..7=Saturday -> 0=Monday..6=Sunday 
-    wk["Day of Week"] = wk["day_of_week"].map({2:0, 3:1, 4:2, 5:3, 6:4, 7:5, 1:6})
     accidents_per_weekday = wk[["Day of Week", "Total_Count"]].sort_values("Day of Week")
 
-    weekday_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-
     # hour
-    hr = load_table("accidents_by_hour").rename(columns={
-        "hour": "Hour",
-        "accident_count": "Total_Count"
-    })
+    if selected_state == "All States":
+        hr = load_table("accidents_by_hour").rename(columns={
+            "hour": "Hour",
+            "accident_count": "Total_Count"
+        })
+    else:
+        hr = load_table("state_hour_counts")
+        hr = filter_by_selected_state(hr, selected_state, "State")
+        hr = hr.rename(columns={
+            "hour": "Hour",
+            "accident_count": "Total_Count"
+        })
+
     accidents_per_hr = hr.sort_values("Hour")
 
 
