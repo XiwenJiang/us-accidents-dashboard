@@ -1,19 +1,13 @@
-from tabnanny import check
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import folium
-from folium.features import GeoJsonTooltip
 from streamlit_folium import st_folium
-from constants import US_CITIES_COORDS, US_STATES 
+from constants import US_STATES 
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 from scipy.stats import gaussian_kde
-from data_processing import (get_state_analysis_data, 
-                             get_tooltip,
-                             create_heatmap,
-                             get_weather_data)
+from data_processing import create_heatmap
 
 
 box_template = """
