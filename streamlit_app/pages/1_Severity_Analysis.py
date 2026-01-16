@@ -235,39 +235,30 @@ def area_chart_severity():
     )
     return fig
 
-def create_radar_chart(data, select_severity):
-    # Define road conditions
-    road_conditions = ['Bump', 'Crossing', 'Give_Way', 'Junction', 'Stop', 'No_Exit', 'Traffic_Signal']
-    # create df for road condition by severity
-    road_condition_severity = data[(data['Severity'] == select_severity)].groupby('Severity')[road_conditions].sum().reset_index()
+def create_radar_chart_from_agg(road_by_sev_df, select_severity):
+    road_conditions = ['Bump','Crossing','Give_Way','Junction','Stop','No_Exit','Traffic_Signal']
+    row = road_by_sev_df[road_by_sev_df["Severity"] == select_severity]
+    if row.empty:
+        return go.Figure()
 
-    # Create radar chart for road condition by severity
-    radar_fig = go.Figure()
+    vals = row[road_conditions].iloc[0].tolist()
 
-    for severity in road_condition_severity['Severity'].unique():
-        severity_data = road_condition_severity[road_condition_severity['Severity'] == severity]
-        radar_fig.add_trace(go.Scatterpolar(
-            r=severity_data[road_conditions].values.flatten(),
-            theta=road_conditions,
-            fill='toself',
-            name=severity
-        ))
-
-    radar_fig.update_layout(
-        polar=dict(
-            radialaxis=dict(
-                visible=True,
-                range=[0, road_condition_severity[road_conditions].values.max()]
-            )
-        ),
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(
+        r=vals,
+        theta=road_conditions,
+        fill='toself',
+        name=select_severity
+    ))
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True)),
         showlegend=False,
         title=f'Road Condition by - {select_severity} Severity',
-        height=400,  # Increased height
-        width=800,   # Added explicit width
-        margin=dict(t=50, l=50, r=50, b=50)  # Added margins to prevent cutoff
+        height=400,
+        width=800,
+        margin=dict(t=50, l=50, r=50, b=50)
     )
-    return radar_fig
-
+    return fig
     
 
 colors = ["#FF5733", "#FF8C00", "#FFD700", "#28A745"]  # 红，橙，黄，绿
@@ -400,15 +391,27 @@ with col3:
         </style>
     """, unsafe_allow_html=True)
     select_severity = st.selectbox('# Select Severity Level', ['Critical', 'High', 'Medium', 'Low'])
-    severity_data = data[(data['Severity'] == select_severity) & (data['County'] == 'Los Angeles')]
-    heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in severity_data.iterrows()]
-    
+    la_points = load_table("la_points_all").copy()
+
+    severity_map = {1:"Low",2:"Medium",3:"High",4:"Critical"}
+    if la_points["Severity"].dtype != object:
+        la_points["Severity"] = la_points["Severity"].map(severity_map)
+
+    severity_data_all = la_points[la_points["Severity"] == select_severity]
+
+    MAX_POINTS = 50000  # 推荐 20k-80k 之间
+    if len(severity_data_all) > MAX_POINTS:
+        severity_data = severity_data_all.sample(n=MAX_POINTS, random_state=42)
+    else:
+        severity_data = severity_data_all
+
     la_heatmap = create_heatmap(
         severity_data,
-        34.0522, 
-        -118.0437, # lat, lon of Los Angeles
-        10 #zoom level
-    )   
+        34.0522,
+        -118.0437,
+        10
+    )
+
     st.markdown(f"<h5 style='text-align: center; margin-bottom: 20px;'>Los Angeles Heat Map - {select_severity} Severity</h5>", unsafe_allow_html=True)
 
     # Set fixed height for both container and map
@@ -420,8 +423,13 @@ with col3:
             height=545,  # Increased height for better visibility
             use_container_width=True
         )
+    
+    road_by_sev = load_table("road_conditions_by_severity").copy()
+    if road_by_sev["Severity"].dtype != object:
+        road_by_sev["Severity"] = road_by_sev["Severity"].map(severity_map)
 
-    st.plotly_chart(create_radar_chart(data, select_severity), use_container_width=True)
 
-    weather_condition_severity_df = data[data['Severity'] == select_severity].groupby('Weather_Condition').size().reset_index(name='Count').sort_values(by='Count', ascending=False)
+    st.plotly_chart(create_radar_chart_from_agg(road_by_sev, select_severity), use_container_width=True)
+
+    # weather_condition_severity_df = data[data['Severity'] == select_severity].groupby('Weather_Condition').size().reset_index(name='Count').sort_values(by='Count', ascending=False)
 
