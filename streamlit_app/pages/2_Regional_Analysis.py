@@ -3,19 +3,20 @@ import pandas as pd
 import plotly.express as px
 import folium
 import requests
-from folium.features import GeoJsonTooltip
-
-
 from streamlit_folium import st_folium
 from folium.plugins import HeatMap
-from constants import US_CITIES_COORDS, US_STATES, STATE_COORDINATES, ALL_STATES  # 添加 ALL_STATES
-from data_processing import (
-    get_state_analysis_data,
-    get_state_yearly_data,
-    create_geojson_data,
-    get_city_statistics,
-    get_tooltip
-)
+from constants import US_CITIES_COORDS, US_STATES
+from data_processing import create_geojson_data
+st.set_page_config(layout="wide")
+
+S3_BASE = "s3://us-accidents-dashboard-1445/processed"
+
+@st.cache_data(ttl=3600)
+def load_table(name: str):
+    return pd.read_parquet(f"{S3_BASE}/{name}/")
+
+CARD_HEIGHT = 520  
+PLOT_HEIGHT = 400
 
 st.title("Location Analysis")
 # st.write("""
@@ -24,43 +25,95 @@ st.title("Location Analysis")
 #          features based on the no. of cases for each distinct location.
 #          """)
 
-data = st.session_state.data
 
 st.sidebar.title("Select Filters")
-years = data['Year'].unique().tolist()
-years.sort()
-years.insert(0, '2016-2023')
-selected_years = st.sidebar.multiselect(
-    "Select Year", years, default=years[0]  # Default to all years
-)
+state_yearly = load_table("state_yearly_summary").copy()
+years = sorted(state_yearly["Year"].unique().tolist())
+years_label = ["2016-2023"] + [str(y) for y in years]
+def normalize_year_selection(selected_years, all_years):
+    """
+    selected_years: list like ['2016-2023'] or ['2019','2020'] or []
+    all_years: list[int] like [2016,2017,...,2023]
+    returns:
+      year_filter: list[int]
+      year_label: str
+    """
+    # empty -> fallback
+    if not selected_years:
+        selected_years = ["2016-2023"]
 
-if '2016-2023' not in selected_years:
-    filtered_data = data[data['Year'].isin(selected_years)]
-else:
-    filtered_data = data
+    if "2016-2023" in selected_years:
+        return all_years, "2016–2023"
+
+    # selected_years are strings or ints depending on your options; normalize to int
+    years_int = sorted([int(y) for y in selected_years])
+    if len(years_int) == 1:
+        return years_int, str(years_int[0])
+
+    return years_int, f"{years_int[0]}–{years_int[-1]}"
+
+all_years = sorted(state_yearly["Year"].unique().tolist())  # 或其它来源
+selected_years = st.sidebar.multiselect("Select Year", years_label, default=[years_label[0]])
+
+year_filter, year_label = normalize_year_selection(selected_years, all_years)
 
 
 col1, col2 = st.columns([1,1])
 
 # Get processed state data
-state_severity_counts = get_state_analysis_data(filtered_data)
-state_severity_counts['Tooltip'] = state_severity_counts.apply(get_tooltip, axis=1)
+df = state_yearly[state_yearly["Year"].isin(year_filter)].copy()
+
+# 聚合多年份：总数相加
+agg = (
+    df.groupby("State_Code", as_index=False)[["Accident_Count","Low","Medium","High","Critical"]]
+      .sum()
+)
+
+# 州名（你说你希望用 full name）
+agg["State"] = agg["State_Code"].map(US_STATES)
+
+top10 = agg.sort_values("Accident_Count", ascending=False).head(10).copy()
+
+top10["Tooltip"] = (
+    "State: " + top10["State"].astype(str) + "<br>"
+    "Years: " + ("All" if "2016-2023" in selected_years else ", ".join(map(str, year_filter))) + "<br>"
+    "Total: " + top10["Accident_Count"].astype(int).map(lambda x: f"{x:,}") + "<br>"
+    "Critical: " + top10["Critical"].astype(int).map(lambda x: f"{x:,}") + "<br>"
+    "High: " + top10["High"].astype(int).map(lambda x: f"{x:,}") + "<br>"
+    "Medium: " + top10["Medium"].astype(int).map(lambda x: f"{x:,}") + "<br>"
+    "Low: " + top10["Low"].astype(int).map(lambda x: f"{x:,}")
+)
+
+long = top10.melt(
+    id_vars=["State","Accident_Count","Tooltip"],
+    value_vars=["Critical","High","Medium","Low"],
+    var_name="Severity",
+    value_name="Severity_Count",
+)
+
+state_order = top10.sort_values("Accident_Count", ascending=False)["State"].tolist()
 
 # Create state bar chart
 top10_bar = px.bar(
-    state_severity_counts,
+    long,
     y="State",
-    x="Accident_Count",
-    color='Severity',
-    orientation='h',
+    x="Severity_Count",
+    color="Severity",
+    orientation="h",
     custom_data=["Tooltip"],
-    hover_data={"Tooltip"},
-    text=None,
-    category_orders={
-        "State": state_severity_counts['State'].unique(),
-        "Severity": ['Critical', 'High', 'Medium', 'Low']
-    }
+    hover_data={"Tooltip": True},
+    category_orders={"State": state_order, "Severity": ["Critical","High","Medium","Low"]},
+    color_discrete_map={
+        "Critical": "#FF5733",
+        "High": "#FF8C00",
+        "Medium": "#FFD700",
+        "Low": "#28A745"
+    },
 )
+
+top10_bar.for_each_trace(lambda t: t.update(hovertemplate="%{customdata[0]}<extra></extra>"))
+top10_bar.update_layout(barmode="stack", height=PLOT_HEIGHT)
+
 
 top10_bar.for_each_trace(
     lambda trace: trace.update(
@@ -79,19 +132,24 @@ top10_bar.update_layout(
         y=0.33,
         xanchor="right",
         x=0.9
-    ),
-    # title="Top 10 States Accident Counts and Severity",
-    xaxis=dict(range=[0, state_severity_counts["Accident_Count"].max() * 1.8]) 
+    )
 )
 
 # Get state yearly data
-state_yearly_data = get_state_yearly_data(filtered_data)
-state_yearly_data = state_yearly_data.sort_values(by=["Accident_Count"], ascending=[False])
+state_map_df = agg[["State","Accident_Count","Low","Medium","High","Critical"]].copy()
+
+state_map_df["tooltip"] = (
+    "Total: " + state_map_df["Accident_Count"].astype(int).map(lambda x: f"{x:,}") + "<br>"
+    "Critical: " + state_map_df["Critical"].astype(int).map(lambda x: f"{x:,}") + "<br>"
+    "High: " + state_map_df["High"].astype(int).map(lambda x: f"{x:,}") + "<br>"
+    "Medium: " + state_map_df["Medium"].astype(int).map(lambda x: f"{x:,}") + "<br>"
+    "Low: " + state_map_df["Low"].astype(int).map(lambda x: f"{x:,}")
+)
 
 # Process GeoJSON data
 geojson_file = "https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json"
 geojson_data = requests.get(geojson_file).json()
-geojson_data = create_geojson_data(state_yearly_data, geojson_data)
+geojson_data = create_geojson_data(state_map_df, geojson_data)
 
 # Create map
 m = folium.Map(location=[37.0902, -95.7129], zoom_start=4, tiles="cartodbpositron")
@@ -100,7 +158,8 @@ m = folium.Map(location=[37.0902, -95.7129], zoom_start=4, tiles="cartodbpositro
 for feature in geojson_data["features"]:
     state_name = feature["properties"]["name"]  # GeoJSON state name
     # Match state name and add Accident_Count and tooltip data
-    match = state_yearly_data[state_yearly_data["State"] == state_name]
+    match = state_map_df[state_map_df["State"] == state_name]
+
     if not match.empty:
         feature["properties"]["Accident_Count"] = int(match["Accident_Count"].iloc[0])
         feature["properties"]["tooltip"] = match["tooltip"].values[0]
@@ -110,7 +169,7 @@ for feature in geojson_data["features"]:
 
 folium.Choropleth(
     geo_data=geojson_data,  # GeoJSON data for US states
-    data=state_yearly_data,  # Changed from adjusted_data to state_yearly_data
+    data=state_map_df,  # Changed from adjusted_data to state_map_df
     columns=["State", "Accident_Count"],
     key_on="feature.properties.name",
     fill_opacity=0.7,
@@ -142,18 +201,31 @@ folium.GeoJson(
 ).add_to(m)
 
 with col1:
-    st.markdown(f"#### Top 10 State With Severity in {selected_years}")
+    with st.container(height=CARD_HEIGHT):
+        st.markdown(f"#### Top 10 State With Severity in {year_label}")
+        st.plotly_chart(top10_bar, use_container_width=True)
 
-    st.plotly_chart(top10_bar, use_container_width=True)
-    
-    st.markdown(f"#### Accident Location by State in {selected_years}")
+    with st.container(height=CARD_HEIGHT):
+        st.markdown(f"#### Accident Location by State in {year_label}")
+        st_folium(m, use_container_width=True, height=PLOT_HEIGHT, returned_objects=[])
 
-    st_folium(m, width=725,height=400, returned_objects=[])
 
 
 # Process city data
-city_df = get_city_statistics(filtered_data)
-top_10_cities = city_df.head(10)
+city_year_df = load_table("city_year_counts_top200").copy()
+
+# 1) 年份过滤
+city_year_df = city_year_df[city_year_df["Year"].isin(year_filter)]
+
+# 2) 如果选了多个年份，把它们合并成一个总排名（与你州级 agg 的逻辑一致）
+city_rank = (
+    city_year_df.groupby("City", as_index=False)["Accident_Count"]
+               .sum()
+               .sort_values("Accident_Count", ascending=False)
+)
+
+top_10_cities = city_rank.head(10).copy()
+top_10_cities["Percentage"] = top_10_cities["Accident_Count"] / top_10_cities["Accident_Count"].sum() * 100
 
 # Create the bar plot
 top_10_city_bar = px.bar(
@@ -185,52 +257,65 @@ top_10_city_bar.update_layout(
     coloraxis_colorbar=dict(
         title="Accident Count"
     ),
-    height = 400
+    height = PLOT_HEIGHT
 )
 
 
 
 
 with col2:
-    st.markdown(f"#### Top 10 Cities in US with most no. of Road Accident Cases in {selected_years}")
-    st.plotly_chart(top_10_city_bar, use_container_width=True)
-    
-    selected_city = st.selectbox(
-        "Select a city to display heatmap:",
-        options=top_10_cities["City"].tolist(),
-        index=1  # Default to the Los Angeles
-    )
+    with st.container(height=CARD_HEIGHT):
+        st.markdown(f"#### Top 10 Cities in US with most no. of Road Accident Cases in {year_label}")
+        st.plotly_chart(top_10_city_bar, use_container_width=True)
 
-    # Filter the data for the selected city
-    filtered_cities = filtered_data[filtered_data["City"] == selected_city]
-    filtered_cities = filtered_cities[['ID', 'Severity', 'Start_Lat', 'Start_Lng']]
+    with st.container(height=CARD_HEIGHT):
 
-
-    heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in filtered_cities.iterrows()]
-    def create_heatmap(df_loc, latitude, longitude, zoom =12, tiles='OpenStreetMap'):
-        """
-        Generate a Folium Map with a heatmap of accident locations.
-        """
-        # Create a list of coordinates from the dataframe columns 'Start_Lat' and 'Start_Lng'
-        heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in df_loc.iterrows()]
-
-        # Create a map centered around the specified coordinates
-        world_map = folium.Map(location=[latitude, longitude], zoom_start=zoom, tiles=tiles)
-
-        # Add the heatmap layer to the map
-        HeatMap(heat_data).add_to(world_map)
-
-        return world_map
-
-    map_us_heatmap = create_heatmap(
-        filtered_cities, 
-        US_CITIES_COORDS[selected_city]['lat'],
-        US_CITIES_COORDS[selected_city]['lon'], 11
-    )
+        city_options = city_rank.head(200)["City"].tolist()
+        selected_city = st.selectbox(
+            "Select a city to display heatmap:", 
+            options=city_options, 
+            index=0)
 
 
-    st.markdown(f"#### Heatmap of Accidents in {selected_city}")
-    st_folium(map_us_heatmap, width=800, height=400)
+        # Filter the data for the selected city
+        city_points = load_table("city_points_year_sample")
+
+        # 年份过滤 + 城市过滤
+        pts = city_points[city_points["Year"].isin(year_filter)]
+        pts = pts[pts["City"] == selected_city][["Start_Lat", "Start_Lng"]]
+
+        # 这里可以加一个安全阈值，防止某些城市点数太多拖慢 folium
+        MAX_POINTS = 50000
+        if len(pts) > MAX_POINTS:
+            pts = pts.sample(n=MAX_POINTS, random_state=42)
+
+        filtered_cities = pts
+
+        heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in filtered_cities.iterrows()]
+        def create_heatmap(df_loc, latitude, longitude, zoom =12, tiles='OpenStreetMap'):
+            """
+            Generate a Folium Map with a heatmap of accident locations.
+            """
+            # Create a list of coordinates from the dataframe columns 'Start_Lat' and 'Start_Lng'
+            heat_data = [[row['Start_Lat'], row['Start_Lng']] for index, row in df_loc.iterrows()]
+
+            # Create a map centered around the specified coordinates
+            world_map = folium.Map(location=[latitude, longitude], zoom_start=zoom, tiles=tiles)
+
+            # Add the heatmap layer to the map
+            HeatMap(heat_data).add_to(world_map)
+
+            return world_map
+
+        map_us_heatmap = create_heatmap(
+            filtered_cities, 
+            US_CITIES_COORDS[selected_city]['lat'],
+            US_CITIES_COORDS[selected_city]['lon'], 11
+        )
+
+
+        st.markdown(f"#### Heatmap of Accidents in {selected_city}")
+        st_folium(map_us_heatmap, width=800, height=300)
 
 st.subheader("Insights:")
 st.write("""

@@ -4,7 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 from scipy.stats import gaussian_kde
-
+st.set_page_config(layout="wide")
 
 # Get data and weather columns
 S3_BASE = "s3://us-accidents-dashboard-1445/processed"

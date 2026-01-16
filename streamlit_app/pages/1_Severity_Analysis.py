@@ -9,7 +9,7 @@ import numpy as np
 from scipy.stats import gaussian_kde
 from data_processing import create_heatmap
 
-
+st.set_page_config(layout="wide")
 box_template = """
 <div style="background:{}; padding:15px; border-radius:10px; text-align:center; color:white; font-size:18px;">
     <b>{}</b><br>

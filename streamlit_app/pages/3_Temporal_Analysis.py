@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from data_processing import state_code
+st.set_page_config(layout="wide")
 
 S3_BASE = "s3://us-accidents-dashboard-1445/processed"
 

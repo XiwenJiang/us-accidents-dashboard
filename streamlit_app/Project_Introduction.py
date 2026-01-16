@@ -2,7 +2,7 @@ import streamlit as st
 import plotly.express as px
 import pandas as pd
 from constants import STATE_COORDINATES
-
+st.set_page_config(layout="wide")
 S3_BASE = "s3://us-accidents-dashboard-1445/processed"
 
 @st.cache_data(ttl=3600)
