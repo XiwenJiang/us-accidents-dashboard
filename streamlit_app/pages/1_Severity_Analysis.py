@@ -1,16 +1,16 @@
+from tabnanny import check
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import folium
 from folium.features import GeoJsonTooltip
 from streamlit_folium import st_folium
-from constants import US_CITIES_COORDS
+from constants import US_CITIES_COORDS, US_STATES 
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 from scipy.stats import gaussian_kde
-from data_processing import (get_severity_data, 
-                             get_state_analysis_data, 
+from data_processing import (get_state_analysis_data, 
                              get_tooltip,
                              create_heatmap,
                              get_weather_data)
@@ -23,6 +23,13 @@ box_template = """
     <span style="font-size:14px;">Δ {}</span>
 </div>
 """
+
+S3_BASE = "s3://us-accidents-dashboard-1445/processed"
+
+@st.cache_data(ttl=3600)
+def load_table(name: str):
+    return pd.read_parquet(f"{S3_BASE}/{name}/")
+
 def create_severity_pie(severity_df):
     # Sort the DataFrame to ensure correct order
     severity_order = ['Critical', 'High', 'Medium', 'Low']
@@ -57,35 +64,84 @@ def create_severity_pie(severity_df):
     )
     return severity_pie
     
-def top_10_city_barplot():
-    state_severity_counts = get_state_analysis_data(data)
-    state_severity_counts['Tooltip'] = state_severity_counts.apply(get_tooltip, axis=1)
+def top_10_state_barplot():
+    df = load_table("state_yearly_summary").copy()
+    # # 选择一个年份：先用最新年份（也可以后面加 selectbox）
+    # latest_year = int(df["Year"].max())
+    # df = df[df["Year"] == latest_year].copy()
+    agg = (
+        df
+        .groupby("State_Code", as_index=False)
+        .agg({
+            "Accident_Count": "sum",
+            "Critical": "sum",
+            "High": "sum",
+            "Medium": "sum",
+            "Low": "sum"
+        })
+    )
 
+    # 映射州名
+    agg["State"] = agg["State_Code"].map(US_STATES)
+
+    # Top10 states by total accidents
+    top10 = (
+        agg
+        .sort_values("Accident_Count", ascending=False)
+        .head(10)
+        .copy()
+    )
+    
+
+
+    # tooltip（每州一条）
+    top10["Tooltip"] = (
+        "State: " + top10["State"].astype(str) + "<br>"
+        "Total: " + top10["Accident_Count"].astype(int).map(lambda x: f"{x:,}") + "<br>"
+        "Critical: " + top10["Critical"].astype(int).map(lambda x: f"{x:,}") + "<br>"
+        "High: " + top10["High"].astype(int).map(lambda x: f"{x:,}") + "<br>"
+        "Medium: " + top10["Medium"].astype(int).map(lambda x: f"{x:,}") + "<br>"
+        "Low: " + top10["Low"].astype(int).map(lambda x: f"{x:,}")
+    )
+
+    
+
+    # 转成长表：State x Severity
+    long = top10.melt(
+        id_vars=["State", "Accident_Count", "Tooltip"],
+        value_vars=["Critical", "High", "Medium", "Low"],
+        var_name="Severity",
+        value_name="Severity_Count",
+    ).rename(columns={"State": "State"})
+
+    
+    state_order = top10.sort_values("Accident_Count", ascending=False)["State"].tolist()
+    
     top10_bar = px.bar(
-        state_severity_counts,
+        long,
         y="State",
-        x="Accident_Count",
-        color='Severity',
-        orientation='h',
+        x="Severity_Count",
+        color="Severity",
+        orientation="h",
         custom_data=["Tooltip"],
-        hover_data={"Tooltip"},
-        text=None,
+        hover_data={"Tooltip": True},
         category_orders={
-            "State": state_severity_counts['State'].unique(),
-            "Severity": ['Critical', 'High', 'Medium', 'Low']
+            "State": state_order,
+            "Severity": ["Critical", "High", "Medium", "Low"]
         },
         color_discrete_map={
-            'Critical': "#FF5733",
-            'High': "#FF8C00",
-            'Medium': "#FFD700",
-            'Low': "#28A745"
+            "Critical": "#FF5733",
+            "High": "#FF8C00",
+            "Medium": "#FFD700",
+            "Low": "#28A745"
         },
-        title="Top 10 States Accident Counts and Severity"
+        title=f"Top 10 States Accident Counts by Severity"
     )
+    
 
     top10_bar.for_each_trace(
         lambda trace: trace.update(
-            hovertemplate="%{customdata[0]}<extra></extra>"  # Use Tooltip column and remove default hover info
+            hovertemplate="%{customdata[0]}<extra></extra>"
         )
     )
 
@@ -93,19 +149,17 @@ def top_10_city_barplot():
         yaxis_title="State",
         xaxis_title="Accident Count",
         barmode="stack",
-        height = 400,
-        margin={"r": 0, "t": 50, "l": 0, "b": 50},  # Adjust margins for better fit
+        height=400,
+        margin={"r": 0, "t": 50, "l": 0, "b": 50},
         legend=dict(
             yanchor="top",
             y=0.33,
             xanchor="right",
             x=0.9
         ),
-        # title="Top 10 States Accident Counts and Severity",
-        xaxis=dict(range=[0, state_severity_counts["Accident_Count"].max() * 1.8]) 
     )
     return top10_bar
-  
+
 
 def color_bubble_county_count():
     county_fips = pd.read_csv('county_fips.csv')
@@ -134,20 +188,21 @@ def color_bubble_county_count():
     return county_bubble
  
 # Area chart of severity distribution over time
-def area_chart_severrity():
-    # Extract year and quarter from Start_Time
-    data['Quarter'] = data['Start_Time'].dt.quarter
-    data['YearQuarter'] = data['Year'].astype(str) + '-Q' + data['Quarter'].astype(str)
-
-    # Group by state and time period
-    severity_qt_yr_df = data.groupby(['Severity', 'YearQuarter'])['ID'].count().reset_index(name='Count')
-    
-    # Sort severity levels to match color order
+def area_chart_severity():
     severity_order = ['Critical', 'High', 'Medium', 'Low']
-    severity_qt_yr_df['Severity'] = pd.Categorical(
-        severity_qt_yr_df['Severity'], 
-        categories=severity_order,
-        ordered=True
+    severity_map = {1:"Low",2:"Medium",3:"High",4:"Critical"}
+
+    df = load_table("state_yearquarter_severity_counts")
+    df["Severity"] = df["Severity"].map(severity_map)
+
+    severity_qt_yr_df = (
+        df.groupby(["YearQuarter","Severity"], as_index=False)["Severity_Count"]
+        .sum()
+        .rename(columns={"Severity_Count":"Count"})
+    )
+
+    severity_qt_yr_df["Severity"] = pd.Categorical(
+        severity_qt_yr_df["Severity"], categories=severity_order, ordered=True
     )
 
     # create area chart with explicit color mapping
@@ -217,10 +272,15 @@ def create_radar_chart(data, select_severity):
 
 colors = ["#FF5733", "#FF8C00", "#FFD700", "#28A745"]  # 红，橙，黄，绿
 
+severity_map = {1:"Low",2:"Medium",3:"High",4:"Critical"}
 
-data = st.session_state.data
-severity_df = get_severity_data(data)
+sev = load_table("severity_counts").rename(columns={"accident_count":"Count"})
+if sev["Severity"].dtype != object:
+    sev["Severity"] = sev["Severity"].map(severity_map)
 
+sev["Percentage"] = sev["Count"] / sev["Count"].sum() * 100
+
+severity_df = sev.rename(columns={"Severity":"Severity Level"})[["Severity Level","Count","Percentage"]]
 
 col1, col2, col3 = st.columns((0.3, 0.4, 0.3), gap ='small')
 
@@ -241,7 +301,86 @@ with col2:
 
     # Add county-level analysis
     st.plotly_chart(color_bubble_county_count(), use_container_width=True)
-    st.plotly_chart(area_chart_severrity(), use_container_width=True)
+    st.plotly_chart(area_chart_severity(), use_container_width=True)
+    
+
+with col1:
+    st.plotly_chart(create_severity_pie(severity_df), use_container_width=True)
+    st.plotly_chart(top_10_state_barplot(), use_container_width=True)
+
+    numerical_cols = ['Temperature(F)', 'Humidity(%)', 'Pressure(in)', 'Visibility(mi)', 'Wind_Speed(mph)', 'Precipitation(in)']
+    
+    weather_df = load_table("weather_numeric_sample").copy()
+
+    severity_map = {1:"Low",2:"Medium",3:"High",4:"Critical"}
+    if weather_df["Severity"].dtype != object:
+        weather_df["Severity"] = weather_df["Severity"].map(severity_map)
+
+    select_weather = st.selectbox('Select Weather Condition', numerical_cols)
+    def remove_outliers(df, column):
+        q25 = df[column].quantile(0.25)
+        q75 = df[column].quantile(0.75)
+        iqr = q75 - q25
+        lower = q25 - 1.5 * iqr
+        upper = q75 + 1.5 * iqr
+        return df[(df[column] >= lower) & (df[column] <= upper)]
+    
+    def create_kde_plot(data, column):
+        # Skip outlier removal for Visibility and Precipitation
+        if column not in ['Visibility(mi)', 'Precipitation(in)']:
+            data_clean = remove_outliers(data, column)
+        else:
+            data_clean = data
+
+        fig = go.Figure()
+        colors_ = px.colors.qualitative.Set2
+        severity_order = ['Critical', 'High', 'Medium', 'Low']
+
+        try:
+            for i, sev in enumerate(severity_order):
+                sev_series = data_clean[data_clean['Severity'] == sev][column].dropna()
+
+                if len(sev_series.unique()) > 1:
+                    kde = gaussian_kde(sev_series)
+
+                    if column == 'Precipitation(in)':
+                        x_range = np.linspace(0, 4, 200)
+                    else:
+                        x_range = np.linspace(sev_series.min(), sev_series.max(), 200)
+
+                    fig.add_trace(
+                        go.Scatter(
+                            x=x_range,
+                            y=kde(x_range),
+                            name=sev,
+                            mode='lines',
+                            line=dict(width=2, color=colors_[i])
+                        )
+                    )
+
+            layout_dict = {
+                'title': f'Weather Condition ({column}) Impact by Severity',
+                'xaxis_title': column,
+                'yaxis_title': 'Density',
+                'width': 800,
+                'height': 400,
+                'showlegend': True,
+                'legend_title_text': 'Severity'
+            }
+            if column == 'Precipitation(in)':
+                layout_dict['xaxis'] = dict(range=[0, 4])
+
+            fig.update_layout(**layout_dict)
+
+        except np.linalg.LinAlgError:
+            st.warning(f"Could not compute KDE for {column}")
+            return None
+
+        return fig
+
+    st.plotly_chart(create_kde_plot(weather_df, select_weather), use_container_width=True)
+
+
 
 with col3:
     # create a heatmap of los angeles with selected severity level
@@ -286,77 +425,3 @@ with col3:
 
     weather_condition_severity_df = data[data['Severity'] == select_severity].groupby('Weather_Condition').size().reset_index(name='Count').sort_values(by='Count', ascending=False)
 
-    
-
-with col1:
-    st.plotly_chart(create_severity_pie(severity_df), use_container_width=True)
-    st.plotly_chart(top_10_city_barplot(), use_container_width=True)
-
-    weather_df = get_weather_data(data)
-    numerical_cols = ['Temperature(F)', 'Humidity(%)', 'Pressure(in)', 'Visibility(mi)', 'Wind_Speed(mph)', 'Precipitation(in)']
-    select_weather = st.selectbox('Select Weather Condition', numerical_cols)
-    def remove_outliers(df, column):
-        q25 = df[column].quantile(0.25)
-        q75 = df[column].quantile(0.75)
-        iqr = q75 - q25
-        lower = q25 - 1.5 * iqr
-        upper = q75 + 1.5 * iqr
-        return df[(df[column] >= lower) & (df[column] <= upper)]
-    
-    def create_kde_plot(data, column):
-        # Skip outlier removal for Visibility and Precipitation
-        if column not in ['Visibility(mi)', 'Precipitation(in)']:
-            data_clean = remove_outliers(data, column)
-        else:
-            data = data
-        
-        fig = go.Figure()
-        colors = px.colors.qualitative.Set2
-        severity_order = ['Critical', 'High', 'Medium', 'Low']
-        
-        try:
-            for i, severity in enumerate(sorted(data_clean['Severity'].unique())):
-                severity_data = data_clean[data_clean['Severity'] == severity][column].dropna()
-                
-                if len(severity_data.unique()) > 1:
-                    kde = gaussian_kde(severity_data)
-                    
-                    # Set different x_range for specific columns
-                    if column == 'Precipitation(in)':
-                        x_range = np.linspace(0, 4, 200)
-                    else:
-                        x_range = np.linspace(severity_data.min(), severity_data.max(), 200)
-                    
-                    fig.add_trace(
-                        go.Scatter(
-                            x=x_range,
-                            y=kde(x_range),
-                            name=severity_order[i],
-                            mode='lines',
-                            line=dict(width=2, color=colors[i])
-                        )
-                    )
-            
-            # Update layout with custom x-axis range
-            layout_dict = {
-                'title': f'Weather Condition ({column}) Impact by Severity',
-                'xaxis_title': column,
-                'yaxis_title': 'Density',
-                'width': 800,
-                'height': 400,
-                'showlegend': True,
-                'template': 'seaborn',
-                'legend_title_text': 'Severity'
-            }
-            
-            if column == 'Precipitation(in)':
-                layout_dict['xaxis'] = dict(range=[0, 4])
-            
-            fig.update_layout(**layout_dict)
-
-        except np.linalg.LinAlgError:
-            st.warning(f"Could not compute KDE for {column}")
-            return None
-        
-        return fig
-    st.plotly_chart(create_kde_plot(weather_df, select_weather), use_container_width=True)
